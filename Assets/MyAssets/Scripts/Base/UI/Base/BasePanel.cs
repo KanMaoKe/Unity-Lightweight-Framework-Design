@@ -1,37 +1,37 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
-namespace Duel
+namespace LiteFW
 {
-public class BasePanel : MonoBehaviour
-{
-    protected bool IsRemove = false;
-
-    protected new string name;
-
-    public virtual void OpenPanel(string name)
+    public class BasePanel : MonoBehaviour
     {
-        this.name = name;
-        gameObject.SetActive(true);
-    }
+        protected bool IsRemove = false;
 
-    public virtual void ClosePanel()
-    {
-        IsRemove = true;
-        gameObject.SetActive(false);
+        protected new string name;
 
-        if (UIManager.Instance.PanelDict.ContainsKey(name))
+        public virtual void OpenPanel(string name)
         {
-            UIManager.Instance.PanelDict.Remove(name);
+            this.name = name;
+            gameObject.SetActive(true);
         }
 
-        Destroy(gameObject);
-    }
+        public virtual void ClosePanel()
+        {
+            IsRemove = true;
+            gameObject.SetActive(false);
 
-    public virtual void OnDisable()
-    {
-        ClosePanel();
+            if (UIManager.Instance.PanelDict.ContainsKey(name))
+            {
+                UIManager.Instance.PanelDict.Remove(name);
+            }
+
+            Destroy(gameObject);
+        }
+
+        //按理来不需要，加的一个补丁，有时候编辑器窗口关掉了，导致没有按流程走的ClosePanel，就会导致，后续重新开启的时候字典里会有缓存
+        public virtual void OnDisable()
+        {
+            ClosePanel();
+        }
     }
-}
 }

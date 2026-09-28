@@ -1,6 +1,6 @@
 using System;
 
-namespace Duel
+namespace LiteFW
 {
     public enum AbilityType
     {
@@ -40,10 +40,15 @@ namespace Duel
 
         public bool Can(AbilityType ability) => locks[(int)ability] == 0;
 
+        //可否移动
         public bool CanMove => Can(AbilityType.Move);
+        //可否旋转
         public bool CanRotate => Can(AbilityType.Rotate);
+        //可否开火
         public bool CanFire => Can(AbilityType.Fire);
+        //可否换弹
         public bool CanReload => Can(AbilityType.Reload);
+        //可否拾取
         public bool CanPickup => Can(AbilityType.Pickup);
 
         /// <summary>返回当前阻塞该能力的来源（供 UI 显示原因），没被锁返回 null</summary>

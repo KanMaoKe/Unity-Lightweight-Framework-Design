@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.Audio;
-
-namespace Duel
+namespace LiteFW
 {
     /// <summary>
     /// 音频服务（全局单例）：SFX 用固定声道轮转 + PlayOneShot，叠播不吞音；

@@ -1,12 +1,11 @@
 using UnityEngine;
-
-namespace Duel
+namespace LiteFW
 {
     /// <summary>
     /// 全局固定音效配置（SO）：玩家受伤、UI、波次等不随对象变化的音效都放这里。
     /// 变化音效（武器 / 怪物）各挂在对应资产上，不在这里。
     /// </summary>
-    [CreateAssetMenu(fileName = "SFXConfig", menuName = "Duel/SFXConfig")]
+    [CreateAssetMenu(fileName = "SFXConfig", menuName = "Lite FW/SFXConfig")]
     public class SFXConfig : ScriptableObject
     {
         private static SFXConfig _instance;
@@ -21,6 +20,7 @@ namespace Duel
             }
         }
 
+        //实例：
         [Header("玩家")]
         [Tooltip("多个受击音随机挑一个")]
         public AudioClip[] playerHurtSounds;

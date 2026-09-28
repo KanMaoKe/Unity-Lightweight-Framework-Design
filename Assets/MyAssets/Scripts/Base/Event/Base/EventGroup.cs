@@ -13,10 +13,19 @@ namespace LiteFW
         /// <summary>
         /// 订阅事件并自动记录，以便后续批量取消
         /// </summary>
-        public void Subscribe<T>(Action<T> handler) where T : IEventMessage
+        public void Subscribe<T>(Action<T> handler) where T : struct, IEventMessage
         {
             EventBus.Subscribe(handler);
             unsubscribeActions.Add(() => EventBus.Unsubscribe(handler));
+        }
+
+        /// <summary>
+        /// 订阅指定作用域的事件并自动记录，以便后续批量取消
+        /// </summary>
+        public void Subscribe<T>(object scope, Action<T> handler) where T : struct, IEventMessage
+        {
+            EventBus.Subscribe(scope, handler);
+            unsubscribeActions.Add(() => EventBus.Unsubscribe(scope, handler));
         }
 
         /// <summary>

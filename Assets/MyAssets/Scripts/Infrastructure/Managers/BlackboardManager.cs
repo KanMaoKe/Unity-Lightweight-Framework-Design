@@ -1,20 +1,18 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
+
 namespace LiteFW
 {
     /// <summary>
-    /// 黑板管理器：全局单例，持有所有黑板数据。
-    /// 其他系统通过 BlackboardManager.Instance.xxx 访问。
+    /// 黑板管理器：全局单例，按类型持有黑板；具体黑板由业务侧注册。
     /// </summary>
     public class BlackboardManager : MonoBehaviour
     {
         /// <summary>全局单例。</summary>
         public static BlackboardManager Instance { get; private set; }
 
-        /// <summary>输入黑板。</summary>
-        public InputBlackboard Input { get; private set; }
-
-        /// <summary>仲裁黑板。</summary>
-        public ArbiterBlackboard Arbiter { get; private set; }
+        private readonly Dictionary<Type, object> m_Blackboards = new Dictionary<Type, object>();
 
         void Awake()
         {
@@ -26,9 +24,6 @@ namespace LiteFW
 
             Instance = this;
             DontDestroyOnLoad(gameObject);
-
-            Input = new InputBlackboard();
-            Arbiter = new ArbiterBlackboard();
         }
 
         void OnDestroy()
@@ -36,9 +31,24 @@ namespace LiteFW
             if (Instance != this)
                 return;
 
+            m_Blackboards.Clear();
             Instance = null;
-            Input = null;
-            Arbiter = null;
+        }
+
+        /// <summary>
+        /// 注册黑板（同类型重复注册会覆盖）。
+        /// </summary>
+        public void Register<T>(T blackboard) where T : class
+        {
+            m_Blackboards[typeof(T)] = blackboard;
+        }
+
+        /// <summary>
+        /// 取黑板；未注册时返回 null。
+        /// </summary>
+        public T Get<T>() where T : class
+        {
+            return m_Blackboards.TryGetValue(typeof(T), out object blackboard) ? (T)blackboard : null;
         }
     }
 }

@@ -135,7 +135,7 @@ namespace LiteFW
                 throw new ArgumentException("Tag 路径不能为空。", nameof(path));
             if (!s_PathPattern.IsMatch(path))
                 throw new ArgumentException(
-                    "Tag 路径须为以点分隔的标识符段（字母开头，可含数字与下划线），例如 State.Debuff.Burn。",
+                    "Tag 路径须为以点分隔的标识符段（字母开头，可含数字与下划线），例如 Root.Child.Leaf。",
                     nameof(path));
         }
 

@@ -57,9 +57,10 @@ namespace LiteFW
         /// <summary>替换资源提供器；须在启动器初始化前设置。</summary>
         public void SetAssetProvider(IAssetProvider provider)
         {
+            if (m_Initialized)
+                throw new InvalidOperationException("启动器已初始化，不能替换资源提供器。");
+
             m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
-            if (m_AudioManager != null)
-                m_AudioManager.SetAssetProvider(provider);
         }
 
         private void Initialize()
@@ -86,6 +87,9 @@ namespace LiteFW
         {
             if (!m_Initialized)
                 return;
+
+            if (m_Assets is IDisposable disposableAssets)
+                disposableAssets.Dispose();
 
             if (m_SceneNavigator is IDisposable disposable)
                 disposable.Dispose();

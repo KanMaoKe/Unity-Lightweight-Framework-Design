@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace LiteFW
@@ -8,7 +10,7 @@ namespace LiteFW
     /// 面板管理器：负责面板的注册、打开、关闭与预制体缓存。
     /// 资源通过 IAssetProvider 加载（默认 Resources，接入 YooAsset 时替换）。
     /// </summary>
-    public class UIManager
+    public class UIManager : IDisposable
     {
         private static UIManager _instance;
 
@@ -28,11 +30,24 @@ namespace LiteFW
         }
 
         private readonly Dictionary<string, string> m_PathDict = new Dictionary<string, string>();
-        private readonly Dictionary<string, GameObject> m_PrefabDict = new Dictionary<string, GameObject>();
+        private readonly Dictionary<string, PrefabEntry> m_PrefabDict = new Dictionary<string, PrefabEntry>();
         private readonly Dictionary<string, BasePanel> m_PanelDict = new Dictionary<string, BasePanel>();
+        private readonly HashSet<string> m_LoadingPanels = new HashSet<string>();
 
         private IAssetProvider m_Assets = new ResourcesAssetProvider();
         private Transform m_Root;
+
+        private sealed class PrefabEntry
+        {
+            internal PrefabEntry(GameObject prefab, IAssetHandle<GameObject> handle)
+            {
+                Prefab = prefab;
+                Handle = handle;
+            }
+
+            internal GameObject Prefab { get; }
+            internal IAssetHandle<GameObject> Handle { get; }
+        }
 
         /// <summary>
         /// 设置面板父节点（所有面板实例的挂载点）。
@@ -43,10 +58,11 @@ namespace LiteFW
         }
 
         /// <summary>
-        /// 替换资源提供器（如接入 YooAsset 时注入对应实现）。
+        /// 替换资源提供器；已缓存的预制体会先释放。
         /// </summary>
         public void SetAssetProvider(IAssetProvider provider)
         {
+            ReleaseCachedPrefabs();
             m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
         }
 
@@ -67,13 +83,15 @@ namespace LiteFW
         }
 
         /// <summary>
-        /// 打开指定面板；已打开、未注册路径或未设置根节点时记录错误并返回 null。
+        /// 异步打开指定面板；已打开、加载中、未注册路径或未设置根节点时记录错误并返回 null。
         /// </summary>
-        public BasePanel OpenPanel(string name)
+        public async UniTask<BasePanel> OpenPanelAsync(
+            string name,
+            CancellationToken cancellationToken = default)
         {
-            if (m_PanelDict.TryGetValue(name, out _))
+            if (m_PanelDict.ContainsKey(name) || m_LoadingPanels.Contains(name))
             {
-                Debug.LogError("界面已经打开：" + name);
+                Debug.LogError("界面已经打开或正在加载：" + name);
                 return null;
             }
 
@@ -89,27 +107,52 @@ namespace LiteFW
                 return null;
             }
 
-            if (!m_PrefabDict.TryGetValue(name, out GameObject panelPrefab) || panelPrefab == null)
+            m_LoadingPanels.Add(name);
+            IAssetHandle<GameObject> pendingHandle = null;
+            try
             {
-                panelPrefab = m_Assets.Load<GameObject>(path);
-                if (panelPrefab == null)
+                PrefabEntry entry = null;
+                if (!m_PrefabDict.TryGetValue(name, out entry) || entry.Prefab == null || !entry.Handle.IsValid)
+                {
+                    pendingHandle = await m_Assets.LoadAsync<GameObject>(path, cancellationToken);
+                    if (!pendingHandle.IsValid)
+                        throw new InvalidOperationException($"面板资源无效：{name}");
+
+                    entry = new PrefabEntry(pendingHandle.Asset, pendingHandle);
+                    m_PrefabDict[name] = entry;
+                    pendingHandle = null;
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                GameObject panelObject = UnityEngine.Object.Instantiate(entry.Prefab, m_Root, false);
+                BasePanel panel = panelObject.GetComponent<BasePanel>();
+                if (panel == null)
+                {
+                    Debug.LogError("面板预制体上缺少 BasePanel 组件：" + name);
+                    UnityEngine.Object.Destroy(panelObject);
                     return null;
+                }
 
-                m_PrefabDict[name] = panelPrefab;
+                panel.OpenPanel(name);
+                m_PanelDict.Add(name, panel);
+                return panel;
             }
-
-            GameObject panelObject = UnityEngine.Object.Instantiate(panelPrefab, m_Root, false);
-            BasePanel panel = panelObject.GetComponent<BasePanel>();
-            if (panel == null)
+            catch (OperationCanceledException)
             {
-                Debug.LogError("面板预制体上缺少 BasePanel 组件：" + name);
-                UnityEngine.Object.Destroy(panelObject);
+                pendingHandle?.Dispose();
                 return null;
             }
-
-            panel.OpenPanel(name);
-            m_PanelDict.Add(name, panel);
-            return panel;
+            catch (Exception exception)
+            {
+                pendingHandle?.Dispose();
+                ReleasePrefab(name);
+                Debug.LogError($"打开面板失败：{name}；{exception.Message}");
+                return null;
+            }
+            finally
+            {
+                m_LoadingPanels.Remove(name);
+            }
         }
 
         /// <summary>
@@ -134,6 +177,34 @@ namespace LiteFW
         internal void NotifyClosed(string name)
         {
             m_PanelDict.Remove(name);
+        }
+
+        /// <summary>
+        /// 释放缓存的预制体资源句柄。
+        /// </summary>
+        public void Dispose()
+        {
+            ReleaseCachedPrefabs();
+            m_PathDict.Clear();
+            m_PanelDict.Clear();
+            m_LoadingPanels.Clear();
+            _instance = null;
+        }
+
+        private void ReleaseCachedPrefabs()
+        {
+            foreach (PrefabEntry entry in m_PrefabDict.Values)
+                entry.Handle.Dispose();
+            m_PrefabDict.Clear();
+        }
+
+        private void ReleasePrefab(string name)
+        {
+            if (!m_PrefabDict.TryGetValue(name, out PrefabEntry entry))
+                return;
+
+            m_PrefabDict.Remove(name);
+            entry.Handle.Dispose();
         }
     }
 }

@@ -1,21 +1,56 @@
+using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace LiteFW
 {
     /// <summary>
-    /// 基于 Resources 的资源提供器：开发期过渡实现，接入 YooAsset 后替换。
+    /// 基于 Resources 的资源提供器：开发期与小型项目实现。
     /// </summary>
     public sealed class ResourcesAssetProvider : IAssetProvider
     {
         /// <summary>
-        /// 从 Resources 目录加载资源；加载失败时输出错误并返回 null。
+        /// 从 Resources 目录异步加载资源；失败时抛出异常。
         /// </summary>
-        public T Load<T>(string key) where T : Object
+        public async UniTask<IAssetHandle<T>> LoadAsync<T>(
+            string key,
+            CancellationToken cancellationToken = default)
+            where T : UnityEngine.Object
         {
-            T asset = Resources.Load<T>(key);
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentException("资源 key 不能为空。", nameof(key));
+
+            ResourceRequest request = Resources.LoadAsync<T>(key);
+            UnityEngine.Object loaded = await request.ToUniTask(cancellationToken: cancellationToken);
+            T asset = loaded as T;
             if (asset == null)
-                Debug.LogError($"资源加载失败：{key}（类型 {typeof(T).Name}）");
-            return asset;
+                throw new InvalidOperationException($"资源加载失败：{key}（类型 {typeof(T).Name}）");
+
+            return new ResourcesAssetHandle<T>(asset);
+        }
+    }
+
+    /// <summary>
+    /// Resources 资源句柄：只负责框架内的有效性状态。
+    /// </summary>
+    internal sealed class ResourcesAssetHandle<T> : IAssetHandle<T> where T : UnityEngine.Object
+    {
+        private readonly T m_Asset;
+        private bool m_IsValid = true;
+
+        internal ResourcesAssetHandle(T asset)
+        {
+            m_Asset = asset;
+        }
+
+        public T Asset => m_Asset;
+
+        public bool IsValid => m_IsValid && m_Asset != null;
+
+        public void Dispose()
+        {
+            m_IsValid = false;
         }
     }
 }

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.Pool;
@@ -49,24 +51,27 @@ namespace LiteFW
         private readonly List<Playback> m_ActivePlaybacks = new List<Playback>();
         private int m_NextPlaybackId = 1;
         private AudioSource m_BgmSource;
+        private IAssetHandle<AudioClip> m_BgmHandle;
 
         /// <summary>
         /// 一次播放的运行时记录。
         /// </summary>
         private readonly struct Playback
         {
-            public Playback(int id, AudioSource source, Transform followTarget)
+            public Playback(int id, AudioSource source, Transform followTarget, IAssetHandle<AudioClip> assetHandle)
             {
                 Id = id;
                 Source = source;
                 FollowsTarget = followTarget != null;
                 FollowTarget = followTarget;
+                AssetHandle = assetHandle;
             }
 
             public int Id { get; }
             public AudioSource Source { get; }
             public bool FollowsTarget { get; }
             public Transform FollowTarget { get; }
+            public IAssetHandle<AudioClip> AssetHandle { get; }
         }
 
         void Awake()
@@ -92,6 +97,10 @@ namespace LiteFW
             if (_instance != this)
                 return;
 
+            for (int i = m_ActivePlaybacks.Count - 1; i >= 0; i--)
+                ReleaseAt(i);
+
+            StopBGM();
             m_SourcePool?.Dispose();
             _instance = null;
         }
@@ -105,38 +114,61 @@ namespace LiteFW
         }
 
         /// <summary>
-        /// 播放 2D 声音（UI 音效、提示音）：不受世界位置影响。
+        /// 异步播放 2D 声音（UI 音效、提示音）：不受世界位置影响。
         /// </summary>
-        public AudioHandle Play2D(string assetKey, float volume = 1f, float pitch = 1f)
+        public UniTask<AudioHandle> Play2DAsync(
+            string assetKey,
+            float volume = 1f,
+            float pitch = 1f,
+            CancellationToken cancellationToken = default)
         {
-            return Play(assetKey, Vector3.zero, false, null, volume, pitch);
+            return PlayAsync(assetKey, Vector3.zero, false, null, volume, pitch, cancellationToken);
         }
 
         /// <summary>
-        /// 播放 3D 声音：在指定世界位置发声，带距离衰减。
+        /// 异步播放 3D 声音：在指定世界位置发声，带距离衰减。
         /// </summary>
-        public AudioHandle PlayAt(string assetKey, Vector3 position, float volume = 1f, float pitch = 1f)
+        public UniTask<AudioHandle> PlayAtAsync(
+            string assetKey,
+            Vector3 position,
+            float volume = 1f,
+            float pitch = 1f,
+            CancellationToken cancellationToken = default)
         {
-            return Play(assetKey, position, true, null, volume, pitch);
+            return PlayAsync(assetKey, position, true, null, volume, pitch, cancellationToken);
         }
 
         /// <summary>
-        /// 播放跟随声音：持续跟随目标位置；跟随目标销毁后自动停止。
+        /// 异步播放跟随声音：持续跟随目标位置；跟随目标销毁后自动停止。
         /// </summary>
-        public AudioHandle PlayFollow(string assetKey, Transform target, float volume = 1f, float pitch = 1f)
+        public UniTask<AudioHandle> PlayFollowAsync(
+            string assetKey,
+            Transform target,
+            float volume = 1f,
+            float pitch = 1f,
+            CancellationToken cancellationToken = default)
         {
             if (!target)
                 throw new ArgumentNullException(nameof(target));
 
-            return Play(assetKey, target.position, true, target, volume, pitch);
+            return PlayAsync(assetKey, target.position, true, target, volume, pitch, cancellationToken);
         }
 
         /// <summary>
-        /// 以随机音高播放 2D 声音。
+        /// 以随机音高异步播放 2D 声音。
         /// </summary>
-        public AudioHandle Play2DRandomPitch(string assetKey, float minPitch = 0.6f, float maxPitch = 1.8f, float volume = 1f)
+        public UniTask<AudioHandle> Play2DRandomPitchAsync(
+            string assetKey,
+            float minPitch = 0.6f,
+            float maxPitch = 1.8f,
+            float volume = 1f,
+            CancellationToken cancellationToken = default)
         {
-            return Play2D(assetKey, volume, UnityEngine.Random.Range(minPitch, maxPitch));
+            return Play2DAsync(
+                assetKey,
+                volume,
+                UnityEngine.Random.Range(minPitch, maxPitch),
+                cancellationToken);
         }
 
         /// <summary>
@@ -165,14 +197,40 @@ namespace LiteFW
         public void PlayBGM(AudioClip clip)
         {
             if (clip == null) return;
+            ReleaseBgmHandle();
             m_BgmSource.clip = clip;
             m_BgmSource.Play();
         }
 
         /// <summary>
+        /// 异步按资源 key 播放背景音乐。
+        /// </summary>
+        public async UniTask<AudioHandle> PlayBGMAsync(
+            string assetKey,
+            float volume = 1f,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(assetKey))
+                throw new ArgumentException("音频资源 key 不能为空。", nameof(assetKey));
+
+            IAssetHandle<AudioClip> handle = await m_Assets.LoadAsync<AudioClip>(assetKey, cancellationToken);
+            ReleaseBgmHandle();
+            m_BgmHandle = handle;
+            m_BgmSource.clip = handle.Asset;
+            m_BgmSource.volume = Mathf.Clamp01(volume);
+            m_BgmSource.Play();
+            return new AudioHandle(m_NextPlaybackId++);
+        }
+
+        /// <summary>
         /// 停止背景音乐。
         /// </summary>
-        public void StopBGM() => m_BgmSource.Stop();
+        public void StopBGM()
+        {
+            m_BgmSource.Stop();
+            m_BgmSource.clip = null;
+            ReleaseBgmHandle();
+        }
 
         private void Init()
         {
@@ -208,18 +266,29 @@ namespace LiteFW
                 m_SourcePool.Release(prewarmed[i]);
         }
 
-        private AudioHandle Play(string assetKey, Vector3 position, bool is3D, Transform followTarget, float volume, float pitch)
+        private async UniTask<AudioHandle> PlayAsync(
+            string assetKey,
+            Vector3 position,
+            bool is3D,
+            Transform followTarget,
+            float volume,
+            float pitch,
+            CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(assetKey))
                 throw new ArgumentException("音频资源 key 不能为空。", nameof(assetKey));
 
-            AudioClip clip = m_Assets.Load<AudioClip>(assetKey);
-            if (clip == null)
+            IAssetHandle<AudioClip> assetHandle =
+                await m_Assets.LoadAsync<AudioClip>(assetKey, cancellationToken);
+            if (!assetHandle.IsValid)
+            {
+                assetHandle.Dispose();
                 return default;
+            }
 
             AudioSource source = m_SourcePool.Get();
             source.transform.position = position;
-            source.clip = clip;
+            source.clip = assetHandle.Asset;
             source.outputAudioMixerGroup = sfxGroup;
             source.loop = false;
             source.volume = Mathf.Clamp01(volume);
@@ -227,7 +296,7 @@ namespace LiteFW
             source.spatialBlend = is3D ? 1f : 0f;
 
             int playbackId = m_NextPlaybackId++;
-            m_ActivePlaybacks.Add(new Playback(playbackId, source, followTarget));
+            m_ActivePlaybacks.Add(new Playback(playbackId, source, followTarget, assetHandle));
             source.Play();
             return new AudioHandle(playbackId);
         }
@@ -260,6 +329,16 @@ namespace LiteFW
             Playback playback = m_ActivePlaybacks[index];
             m_ActivePlaybacks.RemoveAt(index);
             m_SourcePool.Release(playback.Source);
+            playback.AssetHandle.Dispose();
+        }
+
+        private void ReleaseBgmHandle()
+        {
+            if (m_BgmHandle == null)
+                return;
+
+            m_BgmHandle.Dispose();
+            m_BgmHandle = null;
         }
 
         private AudioSource CreateSource()

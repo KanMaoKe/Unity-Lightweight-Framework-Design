@@ -1,7 +1,9 @@
 {
   "name": "LiteFW",
   "rootNamespace": "LiteFW",
-  "references": [],
+  "references": [
+    "UniTask"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

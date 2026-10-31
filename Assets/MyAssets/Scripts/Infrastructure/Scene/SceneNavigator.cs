@@ -7,7 +7,7 @@ namespace LiteFW
     /// <summary>
     /// 场景导航：封装场景加载，并把场景生命周期事件发布到全局事件总线。
     /// </summary>
-    public sealed class SceneNavigator : ISceneNavigator, IDisposable
+    internal sealed class SceneNavigator : ISceneNavigator, IDisposable
     {
         public SceneNavigator()
         {

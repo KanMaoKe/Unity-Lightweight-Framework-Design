@@ -6,36 +6,32 @@ using UnityEngine;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// 面板管理器：负责面板的注册、打开、关闭与预制体缓存。
-    /// 资源通过 IAssetProvider 加载（默认 Resources，接入 YooAsset 时替换）。
-    /// </summary>
+    /// <summary>负责面板配置、异步加载、实例缓存与生命周期。</summary>
     public class UIManager : IDisposable
     {
         private static UIManager _instance;
 
-        /// <summary>
-        /// 全局单例。
-        /// </summary>
+        /// <summary>全局单例。</summary>
         public static UIManager Instance
         {
             get
             {
                 if (_instance == null)
-                {
                     _instance = new UIManager();
-                }
                 return _instance;
             }
         }
 
-        private readonly Dictionary<string, string> m_PathDict = new Dictionary<string, string>();
-        private readonly Dictionary<string, PrefabEntry> m_PrefabDict = new Dictionary<string, PrefabEntry>();
-        private readonly Dictionary<string, BasePanel> m_PanelDict = new Dictionary<string, BasePanel>();
-        private readonly HashSet<string> m_LoadingPanels = new HashSet<string>();
+        private readonly Dictionary<string, PanelConfig> m_Configs = new Dictionary<string, PanelConfig>();
+        private readonly Dictionary<string, BasePanel> m_OpenPanels = new Dictionary<string, BasePanel>();
+        private readonly Dictionary<string, BasePanel> m_CachedPanels = new Dictionary<string, BasePanel>();
+        private readonly Dictionary<string, PrefabEntry> m_PrefabCache = new Dictionary<string, PrefabEntry>();
+        private readonly Dictionary<string, UniTask<BasePanel>> m_LoadingRequests = new Dictionary<string, UniTask<BasePanel>>();
+        private readonly Dictionary<PanelLayer, UILayerRoot> m_Layers = new Dictionary<PanelLayer, UILayerRoot>();
 
         private IAssetProvider m_Assets = new ResourcesAssetProvider();
         private Transform m_Root;
+        private bool m_IsDisposed;
 
         private sealed class PrefabEntry
         {
@@ -49,161 +45,308 @@ namespace LiteFW
             internal IAssetHandle<GameObject> Handle { get; }
         }
 
-        /// <summary>
-        /// 设置面板父节点（所有面板实例的挂载点）。
-        /// </summary>
+        /// <summary>设置 UI 根节点并创建三层 Canvas。</summary>
         public void SetRoot(Transform root)
         {
-            m_Root = root;
+            m_Root = root ?? throw new ArgumentNullException(nameof(root));
+            EnsureLayers();
         }
 
-        /// <summary>
-        /// 替换资源提供器；已缓存的预制体会先释放。
-        /// </summary>
+        /// <summary>替换资源提供器。</summary>
         public void SetAssetProvider(IAssetProvider provider)
         {
-            ReleaseCachedPrefabs();
+            ReleasePrefabs();
             m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
         }
 
-        /// <summary>
-        /// 注册面板：面板名与预制体路径。
-        /// </summary>
+        /// <summary>注册默认 Main 层面板，兼容旧接口。</summary>
         public void RegisterPanel(string name, string path)
         {
-            m_PathDict[name] = path;
+            RegisterPanel(new PanelConfig(name, path, PanelLayer.Main, 100));
         }
 
-        /// <summary>
-        /// 指定面板是否已打开。
-        /// </summary>
+        /// <summary>注册面板配置。</summary>
+        public void RegisterPanel(PanelConfig config)
+        {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
+
+            PanelLayerRules.Validate(config.Layer, config.SortOrder);
+
+            if (m_Configs.TryGetValue(config.PanelId, out PanelConfig existing) &&
+                existing.ResourcePath != config.ResourcePath)
+            {
+                throw new InvalidOperationException($"面板已注册到其他资源路径：{config.PanelId}");
+            }
+
+            m_Configs[config.PanelId] = config;
+        }
+
+        /// <summary>注册批量面板配置。</summary>
+        public void RegisterPanels(IEnumerable<PanelConfig> configs)
+        {
+            if (configs == null)
+                return;
+
+            foreach (PanelConfig config in configs)
+                RegisterPanel(config);
+        }
+
+        /// <summary>读取面板配置。</summary>
+        public bool TryGetConfig(string name, out PanelConfig config)
+        {
+            return m_Configs.TryGetValue(name, out config);
+        }
+
+        /// <summary>面板是否打开。</summary>
         public bool IsOpen(string name)
         {
-            return m_PanelDict.ContainsKey(name);
+            return m_OpenPanels.ContainsKey(name);
         }
 
-        /// <summary>
-        /// 异步打开指定面板；已打开、加载中、未注册路径或未设置根节点时记录错误并返回 null。
-        /// </summary>
-        public async UniTask<BasePanel> OpenPanelAsync(
-            string name,
-            CancellationToken cancellationToken = default)
+        /// <summary>面板是否已有缓存实例。</summary>
+        public bool HasCachedPanel(string name)
         {
-            if (m_PanelDict.ContainsKey(name) || m_LoadingPanels.Contains(name))
+            return m_CachedPanels.ContainsKey(name) && m_CachedPanels[name] != null;
+        }
+
+        /// <summary>获取已注册面板配置。</summary>
+        public IReadOnlyCollection<PanelConfig> Configs => m_Configs.Values;
+
+        /// <summary>异步打开面板。</summary>
+        public async UniTask<BasePanel> OpenPanelAsync(string name, CancellationToken cancellationToken = default)
+        {
+            if (m_IsDisposed)
+                return null;
+
+            if (!m_Configs.TryGetValue(name, out PanelConfig config))
             {
-                Debug.LogError("界面已经打开或正在加载：" + name);
+                Debug.LogError("界面未注册：" + name);
                 return null;
             }
 
-            if (!m_PathDict.TryGetValue(name, out string path))
+            if (m_OpenPanels.TryGetValue(name, out BasePanel openPanel) && openPanel != null)
+                return openPanel;
+
+            if (m_CachedPanels.TryGetValue(name, out BasePanel cachedPanel) && cachedPanel != null)
             {
-                Debug.LogError("界面未注册，或者未配置路径：" + name);
-                return null;
+                try
+                {
+                    OpenCachedPanel(cachedPanel, config);
+                    return cachedPanel;
+                }
+                catch (Exception exception)
+                {
+                    DestroyFailedPanel(config.PanelId, cachedPanel, cachedPanel.gameObject);
+                    Debug.LogError($"打开面板失败：{config.PanelId}；{exception.Message}");
+                    return null;
+                }
             }
 
-            if (m_Root == null)
-            {
-                Debug.LogError("未设置面板父节点，请先调用 SetRoot：" + name);
-                return null;
-            }
+            if (m_LoadingRequests.TryGetValue(name, out UniTask<BasePanel> pending))
+                return await pending;
 
-            m_LoadingPanels.Add(name);
-            IAssetHandle<GameObject> pendingHandle = null;
+            UniTask<BasePanel> request = LoadAndOpenAsync(config, cancellationToken);
+            m_LoadingRequests[name] = request;
             try
             {
-                PrefabEntry entry = null;
-                if (!m_PrefabDict.TryGetValue(name, out entry) || entry.Prefab == null || !entry.Handle.IsValid)
+                return await request;
+            }
+            finally
+            {
+                m_LoadingRequests.Remove(name);
+            }
+        }
+
+        /// <summary>关闭面板但保留实例。</summary>
+        public bool ClosePanel(string name)
+        {
+            if (!m_OpenPanels.TryGetValue(name, out BasePanel panel) || panel == null)
+                return false;
+
+            m_OpenPanels.Remove(name);
+            panel.Close();
+            m_CachedPanels[name] = panel;
+            return true;
+        }
+
+        /// <summary>销毁指定面板实例并保留预制体缓存。</summary>
+        public bool ReleasePanel(string name)
+        {
+            m_OpenPanels.Remove(name);
+            if (!m_CachedPanels.Remove(name, out BasePanel panel))
+                return false;
+
+            DestroyPanel(panel);
+            return true;
+        }
+
+        /// <summary>销毁所有面板与资源缓存。</summary>
+        public void Dispose()
+        {
+            if (m_IsDisposed)
+                return;
+
+            m_IsDisposed = true;
+            var panels = new HashSet<BasePanel>(m_OpenPanels.Values);
+            panels.UnionWith(m_CachedPanels.Values);
+            foreach (BasePanel panel in panels)
+                DestroyPanel(panel);
+
+            m_OpenPanels.Clear();
+            m_CachedPanels.Clear();
+            ReleasePrefabs();
+            m_Configs.Clear();
+            m_LoadingRequests.Clear();
+            m_Layers.Clear();
+            m_Root = null;
+            _instance = null;
+        }
+
+        private async UniTask<BasePanel> LoadAndOpenAsync(PanelConfig config, CancellationToken cancellationToken)
+        {
+            IAssetHandle<GameObject> pendingHandle = null;
+            GameObject instance = null;
+            BasePanel panel = null;
+            try
+            {
+                if (m_Root == null)
+                    throw new InvalidOperationException("未设置 UI 根节点。");
+
+                if (!m_PrefabCache.TryGetValue(config.PanelId, out PrefabEntry entry) ||
+                    entry.Prefab == null || !entry.Handle.IsValid)
                 {
-                    pendingHandle = await m_Assets.LoadAsync<GameObject>(path, cancellationToken);
+                    pendingHandle = await m_Assets.LoadAsync<GameObject>(config.ResourcePath, cancellationToken);
+                    if (m_IsDisposed)
+                        throw new OperationCanceledException();
                     if (!pendingHandle.IsValid)
-                        throw new InvalidOperationException($"面板资源无效：{name}");
+                        throw new InvalidOperationException($"面板资源无效：{config.PanelId}");
 
                     entry = new PrefabEntry(pendingHandle.Asset, pendingHandle);
-                    m_PrefabDict[name] = entry;
+                    m_PrefabCache[config.PanelId] = entry;
                     pendingHandle = null;
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
-                GameObject panelObject = UnityEngine.Object.Instantiate(entry.Prefab, m_Root, false);
-                BasePanel panel = panelObject.GetComponent<BasePanel>();
-                if (panel == null)
-                {
-                    Debug.LogError("面板预制体上缺少 BasePanel 组件：" + name);
-                    UnityEngine.Object.Destroy(panelObject);
-                    return null;
-                }
+                if (m_IsDisposed)
+                    throw new OperationCanceledException();
 
-                panel.OpenPanel(name);
-                m_PanelDict.Add(name, panel);
+                UILayerRoot layerRoot = GetLayerRoot(config.Layer);
+                instance = UnityEngine.Object.Instantiate(entry.Prefab, layerRoot.Root, false);
+                panel = instance.GetComponent<BasePanel>();
+                if (panel == null)
+                    throw new InvalidOperationException($"面板预制体缺少 BasePanel：{config.PanelId}");
+
+                panel.Configure(config);
+                panel.Closed += OnPanelClosed;
+                panel.Initialize();
+                m_CachedPanels[config.PanelId] = panel;
+                OpenCachedPanel(panel, config);
                 return panel;
             }
             catch (OperationCanceledException)
             {
                 pendingHandle?.Dispose();
+                DestroyFailedPanel(config.PanelId, panel, instance);
                 return null;
             }
             catch (Exception exception)
             {
                 pendingHandle?.Dispose();
-                ReleasePrefab(name);
-                Debug.LogError($"打开面板失败：{name}；{exception.Message}");
+                DestroyFailedPanel(config.PanelId, panel, instance);
+                ReleasePrefab(config.PanelId);
+                Debug.LogError($"打开面板失败：{config.PanelId}；{exception.Message}");
                 return null;
             }
-            finally
+        }
+
+        private void OpenCachedPanel(BasePanel panel, PanelConfig config)
+        {
+            m_OpenPanels[config.PanelId] = panel;
+            m_CachedPanels[config.PanelId] = panel;
+            panel.Open();
+            SortLayer(config.Layer);
+        }
+
+        private void SortLayer(PanelLayer layer)
+        {
+            if (!m_Layers.TryGetValue(layer, out UILayerRoot layerRoot))
+                return;
+
+            var ordered = new List<BasePanel>();
+            foreach (BasePanel panel in m_CachedPanels.Values)
             {
-                m_LoadingPanels.Remove(name);
+                if (panel != null && panel.Layer == layer && panel.transform.parent == layerRoot.Root)
+                    ordered.Add(panel);
             }
+
+            ordered.Sort((left, right) => left.SortOrder.CompareTo(right.SortOrder));
+            for (int i = 0; i < ordered.Count; i++)
+                ordered[i].transform.SetSiblingIndex(i);
         }
 
-        /// <summary>
-        /// 关闭指定面板。
-        /// </summary>
-        public bool ClosePanel(string name)
+        private void EnsureLayers()
         {
-            if (!m_PanelDict.TryGetValue(name, out BasePanel panel))
+            foreach (PanelLayer layer in Enum.GetValues(typeof(PanelLayer)))
+                GetLayerRoot(layer);
+        }
+
+        private UILayerRoot GetLayerRoot(PanelLayer layer)
+        {
+            if (m_Layers.TryGetValue(layer, out UILayerRoot existing) && existing != null)
+                return existing;
+
+            GameObject layerObject = new GameObject(layer + "Canvas", typeof(RectTransform));
+            layerObject.transform.SetParent(m_Root, false);
+            UILayerRoot layerRoot = layerObject.AddComponent<UILayerRoot>();
+            layerRoot.Initialize(layer);
+            m_Layers[layer] = layerRoot;
+            return layerRoot;
+        }
+
+        private void DestroyPanel(BasePanel panel)
+        {
+            if (panel == null)
+                return;
+
+            panel.Closed -= OnPanelClosed;
+            panel.Release();
+            UnityEngine.Object.Destroy(panel.gameObject);
+        }
+
+        private void OnPanelClosed(BasePanel panel)
+        {
+            if (m_OpenPanels.TryGetValue(panel.PanelId, out BasePanel openPanel) && openPanel == panel)
+                m_OpenPanels.Remove(panel.PanelId);
+        }
+
+        private void DestroyFailedPanel(string name, BasePanel panel, GameObject instance)
+        {
+            m_OpenPanels.Remove(name);
+            m_CachedPanels.Remove(name);
+            if (panel != null)
             {
-                Debug.LogError("界面未打开：" + name);
-                return false;
+                DestroyPanel(panel);
+                return;
             }
 
-            m_PanelDict.Remove(name);
-            panel.ClosePanel();
-            return true;
+            if (instance != null)
+                UnityEngine.Object.Destroy(instance);
         }
 
-        /// <summary>
-        /// 移除面板记录（面板被外部关闭或销毁时的兜底）。
-        /// </summary>
-        internal void NotifyClosed(string name)
+        private void ReleasePrefabs()
         {
-            m_PanelDict.Remove(name);
-        }
-
-        /// <summary>
-        /// 释放缓存的预制体资源句柄。
-        /// </summary>
-        public void Dispose()
-        {
-            ReleaseCachedPrefabs();
-            m_PathDict.Clear();
-            m_PanelDict.Clear();
-            m_LoadingPanels.Clear();
-            _instance = null;
-        }
-
-        private void ReleaseCachedPrefabs()
-        {
-            foreach (PrefabEntry entry in m_PrefabDict.Values)
+            foreach (PrefabEntry entry in m_PrefabCache.Values)
                 entry.Handle.Dispose();
-            m_PrefabDict.Clear();
+            m_PrefabCache.Clear();
         }
 
         private void ReleasePrefab(string name)
         {
-            if (!m_PrefabDict.TryGetValue(name, out PrefabEntry entry))
+            if (!m_PrefabCache.TryGetValue(name, out PrefabEntry entry))
                 return;
 
-            m_PrefabDict.Remove(name);
+            m_PrefabCache.Remove(name);
             entry.Handle.Dispose();
         }
     }

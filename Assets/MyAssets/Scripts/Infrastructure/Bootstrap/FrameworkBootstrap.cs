@@ -15,6 +15,8 @@ namespace LiteFW
         private ISceneNavigator m_SceneNavigator;
         private AudioManager m_AudioManager;
         private BlackboardManager m_BlackboardManager;
+        private UIManager m_UIManager;
+        private GameObject m_UIRoot;
         private bool m_Initialized;
 
         /// <summary>当前活动的启动器。</summary>
@@ -28,6 +30,9 @@ namespace LiteFW
 
         /// <summary>场景导航服务。</summary>
         public ISceneNavigator Scenes => m_SceneNavigator;
+
+        /// <summary>UI 面板管理器。</summary>
+        public UIManager UI => m_UIManager;
 
         /// <summary>资源提供器。</summary>
         public IAssetProvider Assets => m_Assets;
@@ -72,8 +77,22 @@ namespace LiteFW
             m_AudioManager = CreateService<AudioManager>("AudioManager");
             m_BlackboardManager = CreateService<BlackboardManager>("BlackboardManager");
             m_AudioManager.SetAssetProvider(m_Assets);
+            CreateUIRuntime();
+            UIPanelRegistry registry = Resources.Load<UIPanelRegistry>("UI/UIPanelRegistry");
+            if (registry != null)
+                m_UIManager.RegisterPanels(registry.Panels);
             m_SceneNavigator = new SceneNavigator();
             m_Initialized = true;
+        }
+
+        private void CreateUIRuntime()
+        {
+            m_UIRoot = new GameObject("UIRoot", typeof(RectTransform));
+            m_UIRoot.transform.SetParent(transform, false);
+
+            m_UIManager = UIManager.Instance;
+            m_UIManager.SetAssetProvider(m_Assets);
+            m_UIManager.SetRoot(m_UIRoot.transform);
         }
 
         private T CreateService<T>(string objectName) where T : Component
@@ -87,6 +106,18 @@ namespace LiteFW
         {
             if (!m_Initialized)
                 return;
+
+            if (m_UIManager != null)
+            {
+                m_UIManager.Dispose();
+                m_UIManager = null;
+            }
+
+            if (m_UIRoot != null)
+            {
+                Destroy(m_UIRoot);
+                m_UIRoot = null;
+            }
 
             if (m_Assets is IDisposable disposableAssets)
                 disposableAssets.Dispose();

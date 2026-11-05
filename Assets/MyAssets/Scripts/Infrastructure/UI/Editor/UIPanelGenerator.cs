@@ -1,0 +1,273 @@
+#if UNITY_EDITOR
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+
+namespace LiteFW.Editor
+{
+    /// <summary>根据选中的 UI 预制体生成面板脚本和注册信息。</summary>
+    public static class UIPanelGenerator
+    {
+        private const string CoreOutputDir = "Assets/MyAssets/Scripts/UI/Core/";
+        private const string LogicOutputDir = "Assets/MyAssets/Scripts/UI/Logic/";
+        private const string Namespace = "LiteFW";
+
+        [MenuItem("生成我们的自定义脚本/UI/生成 UI 脚本")]
+        private static void Generate()
+        {
+            UnityEngine.Object selected = Selection.activeObject;
+            if (selected == null)
+            {
+                EditorUtility.DisplayDialog("生成 UI 脚本", "请先选中一个 UI 预制体。", "确定");
+                return;
+            }
+
+            string prefabPath = AssetDatabase.GetAssetPath(selected);
+            if (string.IsNullOrEmpty(prefabPath) || !prefabPath.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase))
+            {
+                EditorUtility.DisplayDialog("生成 UI 脚本", "选中的对象不是 UI 预制体。", "确定");
+                return;
+            }
+
+            UIPanelGeneratorWindow.Open(prefabPath);
+        }
+
+        internal static void GenerateFiles(string prefabPath, PanelLayer layer, int order)
+        {
+            PanelLayerRules.Validate(layer, order);
+            string className = Path.GetFileNameWithoutExtension(prefabPath);
+            if (!IsIdentifier(className))
+                throw new InvalidOperationException("预制体名称必须是有效的 C# 类名。");
+
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab == null || prefab.GetComponent<BasePanel>() != null)
+                throw new InvalidOperationException("请选择尚未挂载 BasePanel 的 UI 预制体。");
+
+            List<ScannedControl> controls = ScanControls(prefabPath);
+            string resourcePath = GetResourcePath(prefabPath);
+            ValidateRegistration(className, resourcePath, layer, order);
+            EnsureUniqueFieldNames(controls);
+            RegisterPanel(className, resourcePath, layer, order);
+            GenerateCore(className, controls, layer, order, resourcePath);
+            GenerateLogic(className);
+            AssetDatabase.Refresh();
+        }
+
+        private static void RegisterPanel(string className, string resourcePath, PanelLayer layer, int order)
+        {
+            const string registryPath = UIPanelGeneratorWindow.RegistryPath;
+            UIPanelRegistry registry = AssetDatabase.LoadAssetAtPath<UIPanelRegistry>(registryPath);
+            if (registry == null)
+            {
+                string directory = Path.GetDirectoryName(registryPath);
+                if (!Directory.Exists(directory))
+                    Directory.CreateDirectory(directory);
+                registry = ScriptableObject.CreateInstance<UIPanelRegistry>();
+                AssetDatabase.CreateAsset(registry, registryPath);
+            }
+
+            registry.Register(new PanelConfig(className, resourcePath, layer, order));
+            EditorUtility.SetDirty(registry);
+            AssetDatabase.SaveAssets();
+
+            if (FrameworkBootstrap.Instance != null && FrameworkBootstrap.Instance.UI != null)
+                FrameworkBootstrap.Instance.UI.RegisterPanel(new PanelConfig(className, resourcePath, layer, order));
+        }
+
+        private static void ValidateRegistration(string className, string resourcePath, PanelLayer layer, int order)
+        {
+            if (!resourcePath.StartsWith("UI/", StringComparison.Ordinal))
+                throw new InvalidOperationException("请把 UI 预制体放在 Assets/Resources/UI/ 下，再生成脚本。");
+
+            UIPanelRegistry registry = AssetDatabase.LoadAssetAtPath<UIPanelRegistry>(UIPanelGeneratorWindow.RegistryPath);
+            if (registry == null)
+                return;
+
+            foreach (PanelConfig config in registry.Panels)
+            {
+                if (config.PanelId == className)
+                {
+                    if (config.ResourcePath != resourcePath)
+                        throw new InvalidOperationException($"面板 {className} 已注册到其他资源路径：{config.ResourcePath}");
+                    continue;
+                }
+                if (config.Layer == layer && config.SortOrder == order)
+                    throw new InvalidOperationException($"顺序 {order} 已被 {config.PanelId} 使用，请选择其他顺序。");
+            }
+        }
+
+        private static void EnsureUniqueFieldNames(List<ScannedControl> controls)
+        {
+            var names = new HashSet<string>();
+            foreach (ScannedControl control in controls)
+            {
+                if (!names.Add(control.FieldName))
+                    throw new InvalidOperationException($"控件名称会生成重复字段：{control.FieldName}，请先修改重复名称。");
+            }
+        }
+
+        private static bool IsIdentifier(string value)
+        {
+            if (string.IsNullOrEmpty(value) || (!char.IsLetter(value[0]) && value[0] != '_'))
+                return false;
+
+            for (int i = 1; i < value.Length; i++)
+            {
+                if (!char.IsLetterOrDigit(value[i]) && value[i] != '_')
+                    return false;
+            }
+
+            return true;
+        }
+
+        internal static List<ScannedControl> ScanControls(string prefabPath)
+        {
+            var results = new List<ScannedControl>();
+            GameObject root = PrefabUtility.LoadPrefabContents(prefabPath);
+            if (root == null)
+                return results;
+
+            try
+            {
+                ScanNode(root, results);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+
+            return results;
+        }
+
+        internal static string GetResourcePath(string prefabPath)
+        {
+            const string marker = "/Resources/";
+            int index = prefabPath.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (index < 0)
+                return prefabPath;
+
+            string path = prefabPath.Substring(index + marker.Length);
+            return path.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase)
+                ? path.Substring(0, path.Length - ".prefab".Length)
+                : path;
+        }
+
+        private static void ScanNode(GameObject go, List<ScannedControl> results)
+        {
+            string name = go.name;
+            string normalized = name.Replace(" (Legacy)", string.Empty).Replace("(Legacy)", string.Empty);
+            if (!UIControlConfig.DefaultUnityNames.Contains(normalized))
+            {
+                foreach (KeyValuePair<string, UIComponentInfo> pair in UIControlConfig.ControlMap)
+                {
+                    if (!name.StartsWith(pair.Key, StringComparison.OrdinalIgnoreCase) || name.Length == pair.Key.Length)
+                        continue;
+
+                    if (go.GetComponent(pair.Value.ComponentType) != null)
+                    {
+                        results.Add(new ScannedControl
+                        {
+                            Name = name,
+                            FieldName = "m_" + SanitizeIdentifier(name),
+                            Info = pair.Value
+                        });
+                    }
+                    break;
+                }
+            }
+
+            foreach (Transform child in go.transform)
+                ScanNode(child.gameObject, results);
+        }
+
+        private static void GenerateCore(string className, List<ScannedControl> controls, PanelLayer layer, int order, string resourcePath)
+        {
+            EnsureDirectory(CoreOutputDir);
+            var sb = new StringBuilder();
+            sb.AppendLine("// 自动生成，请勿手动修改。");
+            sb.AppendLine("using UnityEngine;");
+            sb.AppendLine("using UnityEngine.UI;");
+            sb.AppendLine();
+            sb.AppendLine("namespace LiteFW");
+            sb.AppendLine("{");
+            sb.AppendLine($"    public partial class {className} : BasePanel");
+            sb.AppendLine("    {");
+            sb.AppendLine($"        public const string PanelId = \"{className}\";");
+            sb.AppendLine($"        public const string ResourcePath = \"{resourcePath}\";");
+            sb.AppendLine($"        public const PanelLayer Layer = PanelLayer.{layer};");
+            sb.AppendLine($"        public const int SortOrder = {order};");
+            sb.AppendLine();
+            foreach (ScannedControl control in controls)
+                sb.AppendLine($"        [SerializeField] private {control.Info.TypeName} {control.FieldName};");
+            sb.AppendLine("    }");
+            sb.AppendLine("}");
+
+            File.WriteAllText(Path.Combine(CoreOutputDir, className + ".Core.cs"), sb.ToString(), Encoding.UTF8);
+        }
+
+        private static void GenerateLogic(string className)
+        {
+            EnsureDirectory(LogicOutputDir);
+            string filePath = Path.Combine(LogicOutputDir, className + ".cs");
+            if (File.Exists(filePath))
+                return;
+
+            var sb = new StringBuilder();
+            sb.AppendLine("// 在此处编写界面逻辑。");
+            sb.AppendLine("using UnityEngine;");
+            sb.AppendLine();
+            sb.AppendLine("namespace LiteFW");
+            sb.AppendLine("{");
+            sb.AppendLine($"    public partial class {className}");
+            sb.AppendLine("    {");
+            sb.AppendLine("        protected override void OnInit(object userData)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            base.OnInit(userData);");
+            sb.AppendLine("        }");
+            sb.AppendLine();
+            sb.AppendLine("        protected override void OnOpen(object userData)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            base.OnOpen(userData);");
+            sb.AppendLine("        }");
+            sb.AppendLine();
+            sb.AppendLine("        protected override void OnClose(bool isShutdown, object userData)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            base.OnClose(isShutdown, userData);");
+            sb.AppendLine("        }");
+            sb.AppendLine("    }");
+            sb.AppendLine("}");
+
+            File.WriteAllText(filePath, sb.ToString(), Encoding.UTF8);
+        }
+
+        private static string SanitizeIdentifier(string value)
+        {
+            var sb = new StringBuilder();
+            for (int i = 0; i < value.Length; i++)
+            {
+                char c = value[i];
+                if (i == 0 && !char.IsLetter(c) && c != '_')
+                    sb.Append('_');
+                sb.Append(char.IsLetterOrDigit(c) || c == '_' ? c : '_');
+            }
+            return sb.Length == 0 ? "_" : sb.ToString();
+        }
+
+        private static void EnsureDirectory(string path)
+        {
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+        }
+    }
+
+    public sealed class ScannedControl
+    {
+        public string Name;
+        public string FieldName;
+        public UIComponentInfo Info;
+    }
+}
+#endif

@@ -43,8 +43,12 @@ namespace LiteFW.Editor
                 throw new InvalidOperationException("预制体名称必须是有效的 C# 类名。");
 
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            if (prefab == null || prefab.GetComponent<BasePanel>() != null)
-                throw new InvalidOperationException("请选择尚未挂载 BasePanel 的 UI 预制体。");
+            if (prefab == null)
+                throw new InvalidOperationException("无法读取 UI 预制体。");
+
+            BasePanel attached = prefab.GetComponent<BasePanel>();
+            if (attached != null && attached.GetType().Name != className)
+                throw new InvalidOperationException($"预制体根节点已挂载 {attached.GetType().Name}，不能生成 {className}。");
 
             List<ScannedControl> controls = ScanControls(prefabPath);
             string resourcePath = GetResourcePath(prefabPath);
@@ -187,7 +191,10 @@ namespace LiteFW.Editor
         {
             EnsureDirectory(CoreOutputDir);
             var sb = new StringBuilder();
-            sb.AppendLine("// 自动生成，请勿手动修改。");
+            sb.AppendLine("//------------------------------------------------------------");
+            sb.AppendLine($"// {className}.Core.cs —— 工具自动生成，请勿手动修改");
+            sb.AppendLine("//------------------------------------------------------------");
+            sb.AppendLine();
             sb.AppendLine("using UnityEngine;");
             sb.AppendLine("using UnityEngine.UI;");
             sb.AppendLine();
@@ -195,11 +202,9 @@ namespace LiteFW.Editor
             sb.AppendLine("{");
             sb.AppendLine($"    public partial class {className} : BasePanel");
             sb.AppendLine("    {");
-            sb.AppendLine($"        public const string PanelId = \"{className}\";");
-            sb.AppendLine($"        public const string ResourcePath = \"{resourcePath}\";");
-            sb.AppendLine($"        public const PanelLayer Layer = PanelLayer.{layer};");
-            sb.AppendLine($"        public const int SortOrder = {order};");
-            sb.AppendLine();
+            sb.AppendLine("        // ===== UI 控件变量（工具自动扫描预制体生成）=====");
+            if (controls.Count == 0)
+                sb.AppendLine("        // (未检测到符合命名约定的控件)");
             foreach (ScannedControl control in controls)
                 sb.AppendLine($"        [SerializeField] private {control.Info.TypeName} {control.FieldName};");
             sb.AppendLine("    }");
@@ -216,27 +221,53 @@ namespace LiteFW.Editor
                 return;
 
             var sb = new StringBuilder();
-            sb.AppendLine("// 在此处编写界面逻辑。");
+            sb.AppendLine("//------------------------------------------------------------");
+            sb.AppendLine($"// {className}.cs —— 在此处编写界面逻辑");
+            sb.AppendLine("//------------------------------------------------------------");
+            sb.AppendLine();
             sb.AppendLine("using UnityEngine;");
             sb.AppendLine();
             sb.AppendLine("namespace LiteFW");
             sb.AppendLine("{");
+            sb.AppendLine("    /// <summary>");
+            sb.AppendLine($"    /// {className} 界面逻辑");
+            sb.AppendLine("    /// </summary>");
             sb.AppendLine($"    public partial class {className}");
             sb.AppendLine("    {");
+            sb.AppendLine("        #region 生命周期");
+            sb.AppendLine();
+            sb.AppendLine("        /// <summary>");
+            sb.AppendLine("        /// 界面初始化（仅首次创建时调用一次）");
+            sb.AppendLine("        /// </summary>");
             sb.AppendLine("        protected override void OnInit(object userData)");
             sb.AppendLine("        {");
             sb.AppendLine("            base.OnInit(userData);");
+            sb.AppendLine();
             sb.AppendLine("        }");
             sb.AppendLine();
+            sb.AppendLine("        /// <summary>");
+            sb.AppendLine("        /// 界面打开时调用 —— 在此处注册按钮/事件");
+            sb.AppendLine("        /// </summary>");
             sb.AppendLine("        protected override void OnOpen(object userData)");
             sb.AppendLine("        {");
             sb.AppendLine("            base.OnOpen(userData);");
+            sb.AppendLine();
             sb.AppendLine("        }");
             sb.AppendLine();
+            sb.AppendLine("        /// <summary>");
+            sb.AppendLine("        /// 界面关闭时调用 —— 在此处反注册按钮/事件");
+            sb.AppendLine("        /// </summary>");
             sb.AppendLine("        protected override void OnClose(bool isShutdown, object userData)");
             sb.AppendLine("        {");
             sb.AppendLine("            base.OnClose(isShutdown, userData);");
+            sb.AppendLine();
             sb.AppendLine("        }");
+            sb.AppendLine();
+            sb.AppendLine("        #endregion");
+            sb.AppendLine();
+            sb.AppendLine("        #region 自定义逻辑");
+            sb.AppendLine();
+            sb.AppendLine("        #endregion");
             sb.AppendLine("    }");
             sb.AppendLine("}");
 

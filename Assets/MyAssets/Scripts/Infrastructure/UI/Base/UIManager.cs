@@ -74,12 +74,6 @@ namespace LiteFW
             m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
         }
 
-        /// <summary>注册默认 Main 层面板，兼容旧接口。</summary>
-        public void RegisterPanel(string name, string path)
-        {
-            RegisterPanel(new PanelConfig(name, path, PanelLayer.Main, 100));
-        }
-
         /// <summary>注册面板配置。</summary>
         public void RegisterPanel(PanelConfig config)
         {

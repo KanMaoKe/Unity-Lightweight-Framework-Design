@@ -40,6 +40,8 @@ namespace LiteFW
         private IAssetProvider m_Assets = new ResourcesAssetProvider();
         /// <summary>UI 根节点。</summary>
         private Transform m_Root;
+        /// <summary>驱动打开面板 Update 的组件。</summary>
+        private UIUpdateDriver m_UpdateDriver;
         /// <summary>是否已释放。</summary>
         private bool m_IsDisposed;
 
@@ -176,6 +178,7 @@ namespace LiteFW
             m_OpenPanels.Remove(name);
             panel.Close();
             m_CachedPanels[name] = panel;
+            RefreshCoverage();
             return true;
         }
 
@@ -187,6 +190,7 @@ namespace LiteFW
                 return false;
 
             DestroyPanel(panel);
+            RefreshCoverage();
             return true;
         }
 
@@ -209,6 +213,7 @@ namespace LiteFW
             m_LoadingRequests.Clear();
             m_Layers.Clear();
             m_Root = null;
+            m_UpdateDriver = null;
             _instance = null;
         }
 
@@ -277,6 +282,50 @@ namespace LiteFW
             m_CachedPanels[config.PanelId] = panel;
             panel.Open();
             SortLayer(config.Layer);
+            RefreshCoverage();
+        }
+
+        /// <summary>按 Popup 数量更新覆盖、暂停与焦点通知。</summary>
+        private void RefreshCoverage()
+        {
+            int popupCount = 0;
+            BasePanel topPanel = null;
+            foreach (BasePanel panel in m_OpenPanels.Values)
+            {
+                if (panel != null && panel.Layer == PanelLayer.Popup && panel.State == BasePanel.PanelState.Open)
+                    popupCount++;
+
+                if (panel != null && panel.Layer != PanelLayer.Popup &&
+                    panel.State == BasePanel.PanelState.Open &&
+                    (topPanel == null || panel.SortOrder > topPanel.SortOrder))
+                {
+                    topPanel = panel;
+                }
+            }
+
+            foreach (BasePanel panel in m_OpenPanels.Values)
+            {
+                if (panel == null || panel.State != BasePanel.PanelState.Open)
+                    continue;
+
+                if (panel.Layer == PanelLayer.Popup)
+                    continue;
+
+                if (popupCount > 0)
+                    panel.Cover();
+                else if (panel.IsCovered)
+                    panel.Reveal(panel == topPanel ? panel : null);
+            }
+        }
+
+        /// <summary>每帧驱动未暂停的打开面板。</summary>
+        internal void Tick(float elapseSeconds, float realElapseSeconds)
+        {
+            foreach (BasePanel panel in m_OpenPanels.Values)
+            {
+                if (panel != null)
+                    panel.Tick(elapseSeconds, realElapseSeconds);
+            }
         }
 
         /// <summary>按配置顺序重排同层面板实例。</summary>
@@ -315,6 +364,8 @@ namespace LiteFW
             UILayerRoot layerRoot = layerObject.AddComponent<UILayerRoot>();
             layerRoot.Initialize(layer);
             m_Layers[layer] = layerRoot;
+            if (m_UpdateDriver == null && m_Root != null)
+                m_UpdateDriver = m_Root.gameObject.AddComponent<UIUpdateDriver>();
             return layerRoot;
         }
 

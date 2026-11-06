@@ -30,6 +30,9 @@ namespace LiteFW
         /// <summary>面板是否已初始化。</summary>
         public bool IsInitialized { get; private set; }
 
+        /// <summary>面板是否被 Popup 覆盖并暂停。</summary>
+        public bool IsCovered { get; private set; }
+
         /// <summary>初始化面板配置。</summary>
         internal void Configure(PanelConfig config)
         {
@@ -74,6 +77,36 @@ namespace LiteFW
             CloseInternal(false);
         }
 
+        /// <summary>被 Popup 覆盖时通知。</summary>
+        internal void Cover()
+        {
+            if (State != PanelState.Open || IsCovered)
+                return;
+
+            IsCovered = true;
+            OnCover();
+            OnPause();
+        }
+
+        /// <summary>Popup 关闭后恢复时通知。</summary>
+        internal void Reveal(object userData = null)
+        {
+            if (State != PanelState.Open || !IsCovered)
+                return;
+
+            IsCovered = false;
+            OnReveal();
+            OnResume();
+            OnRefocus(userData);
+        }
+
+        /// <summary>驱动面板每帧更新。</summary>
+        internal void Tick(float elapseSeconds, float realElapseSeconds)
+        {
+            if (State == PanelState.Open)
+                OnUpdate(elapseSeconds, realElapseSeconds);
+        }
+
         /// <summary>销毁前关闭并通知业务清理。</summary>
         internal void Release()
         {
@@ -92,6 +125,7 @@ namespace LiteFW
 
             bool wasOpen = State == PanelState.Open;
             State = PanelState.Hidden;
+            IsCovered = false;
             if (wasOpen || isShutdown)
                 OnClose(isShutdown, null);
             gameObject.SetActive(false);
@@ -110,6 +144,36 @@ namespace LiteFW
 
         /// <summary>每次关闭回调。</summary>
         protected virtual void OnClose(bool isShutdown, object userData)
+        {
+        }
+
+        /// <summary>被 Popup 覆盖时调用。</summary>
+        protected virtual void OnCover()
+        {
+        }
+
+        /// <summary>Popup 关闭后重新显示时调用。</summary>
+        protected virtual void OnReveal()
+        {
+        }
+
+        /// <summary>被 Popup 覆盖时调用，不停止自身更新。</summary>
+        protected virtual void OnPause()
+        {
+        }
+
+        /// <summary>Popup 关闭后恢复时调用。</summary>
+        protected virtual void OnResume()
+        {
+        }
+
+        /// <summary>重新获得焦点时调用。</summary>
+        protected virtual void OnRefocus(object userData)
+        {
+        }
+
+        /// <summary>面板打开时每帧调用。</summary>
+        protected virtual void OnUpdate(float elapseSeconds, float realElapseSeconds)
         {
         }
 

@@ -11,11 +11,15 @@ namespace LiteFW.Editor
     /// <summary>根据选中的 UI 预制体生成面板脚本和注册信息。</summary>
     public static class UIPanelGenerator
     {
+        /// <summary>Core 脚本输出目录。</summary>
         private const string CoreOutputDir = "Assets/MyAssets/Scripts/UI/Core/";
+        /// <summary>Logic 脚本输出目录。</summary>
         private const string LogicOutputDir = "Assets/MyAssets/Scripts/UI/Logic/";
+        /// <summary>生成脚本使用的命名空间。</summary>
         private const string Namespace = "LiteFW";
 
         [MenuItem("生成我们的自定义脚本/UI/生成 UI 脚本")]
+        /// <summary>校验选中对象并打开生成窗口。</summary>
         private static void Generate()
         {
             UnityEngine.Object selected = Selection.activeObject;
@@ -61,6 +65,7 @@ namespace LiteFW.Editor
             AssetDatabase.Refresh();
         }
 
+        /// <summary>把面板配置写入注册资产。</summary>
         private static void RegisterPanel(string className, string resourcePath, PanelLayer layer, int order)
         {
             const string registryPath = UIPanelGeneratorWindow.RegistryPath;
@@ -82,6 +87,7 @@ namespace LiteFW.Editor
                 FrameworkBootstrap.Instance.UI.RegisterPanel(new PanelConfig(className, resourcePath, layer, order));
         }
 
+        /// <summary>检查资源路径与层内顺序冲突。</summary>
         private static void ValidateRegistration(string className, string resourcePath, PanelLayer layer, int order)
         {
             if (!resourcePath.StartsWith("UI/", StringComparison.Ordinal))
@@ -104,6 +110,7 @@ namespace LiteFW.Editor
             }
         }
 
+        /// <summary>检查控件是否会生成重名字段。</summary>
         private static void EnsureUniqueFieldNames(List<ScannedControl> controls)
         {
             var names = new HashSet<string>();
@@ -114,6 +121,7 @@ namespace LiteFW.Editor
             }
         }
 
+        /// <summary>判断字符串能否作为 C# 标识符。</summary>
         private static bool IsIdentifier(string value)
         {
             if (string.IsNullOrEmpty(value) || (!char.IsLetter(value[0]) && value[0] != '_'))
@@ -162,6 +170,7 @@ namespace LiteFW.Editor
                 : path;
         }
 
+        /// <summary>递归收集符合命名约定的控件。</summary>
         private static void ScanNode(GameObject go, List<ScannedControl> results)
         {
             string name = go.name;
@@ -190,6 +199,7 @@ namespace LiteFW.Editor
                 ScanNode(child.gameObject, results);
         }
 
+        /// <summary>生成控件字段声明。</summary>
         private static void GenerateCore(string className, List<ScannedControl> controls, PanelLayer layer, int order, string resourcePath)
         {
             EnsureDirectory(CoreOutputDir);
@@ -219,6 +229,7 @@ namespace LiteFW.Editor
             File.WriteAllText(Path.Combine(CoreOutputDir, className + ".Core.cs"), sb.ToString(), Encoding.UTF8);
         }
 
+        /// <summary>生成界面逻辑骨架，已存在则跳过。</summary>
         private static void GenerateLogic(string className)
         {
             EnsureDirectory(LogicOutputDir);
@@ -280,6 +291,7 @@ namespace LiteFW.Editor
             File.WriteAllText(filePath, sb.ToString(), Encoding.UTF8);
         }
 
+        /// <summary>把任意字符串转为合法标识符。</summary>
         private static string SanitizeIdentifier(string value)
         {
             var sb = new StringBuilder();
@@ -293,6 +305,7 @@ namespace LiteFW.Editor
             return sb.Length == 0 ? "_" : sb.ToString();
         }
 
+        /// <summary>确保输出目录存在。</summary>
         private static void EnsureDirectory(string path)
         {
             if (!Directory.Exists(path))

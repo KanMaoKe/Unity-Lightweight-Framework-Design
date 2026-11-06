@@ -9,23 +9,39 @@ namespace LiteFW
     /// </summary>
     public sealed class PrefabPool<T> : IDisposable where T : Component
     {
+        /// <summary>由活跃数量推算缓存需求的系数。</summary>
         const float k_CachePressureFactor = 0.75f;
+        /// <summary>允许下调缓存前的等待时长。</summary>
         const float k_CacheDecayDelay = 10f;
+        /// <summary>每次下调缓存的时间间隔。</summary>
         const float k_CacheDecayInterval = 5f;
 
+        /// <summary>池化对象的模板。</summary>
         readonly T m_Prefab;
+        /// <summary>实例的统一挂载节点。</summary>
         readonly Transform m_PoolRoot;
+        /// <summary>实例名称。</summary>
         readonly string m_InstanceName;
+        /// <summary>预热数量。</summary>
         readonly int m_InitialCapacity;
+        /// <summary>最少保留的空闲数量。</summary>
         readonly int m_MinCachedCount;
+        /// <summary>可借用的空闲实例。</summary>
         readonly Stack<T> m_FreeItems;
+        /// <summary>池自行创建的实例。</summary>
         readonly List<T> m_ClonedItems;
+        /// <summary>已借出的实例。</summary>
         readonly HashSet<T> m_RentedItems;
 
+        /// <summary>是否已完成预热。</summary>
         bool m_Prewarmed;
+        /// <summary>当前借出数量。</summary>
         int m_ActiveCount;
+        /// <summary>目标空闲缓存数量。</summary>
         int m_TargetCachedCount;
+        /// <summary>最近一次缓存压力上升时间。</summary>
         float m_LastPressureTime;
+        /// <summary>最近一次下调缓存的时间。</summary>
         float m_LastDecayTime;
 
         /// <param name="prefab">池化对象的模板 prefab。</param>
@@ -148,6 +164,7 @@ namespace LiteFW
             m_LastDecayTime = 0f;
         }
 
+        /// <summary>实例化一个新的池对象。</summary>
         T CreateClone()
         {
             T clone = UnityEngine.Object.Instantiate(m_Prefab, m_PoolRoot, false);
@@ -196,18 +213,21 @@ namespace LiteFW
             m_LastDecayTime = now;
         }
 
+        /// <summary>销毁池创建的实例。</summary>
         void DestroyClone(T item)
         {
             m_ClonedItems.Remove(item);
             UnityEngine.Object.Destroy(item.gameObject);
         }
 
+        /// <summary>借出时通知实例生命周期。</summary>
         static void NotifyRent(T item)
         {
             if (item is IPoolLifecycle lifecycle)
                 lifecycle.OnPoolRent();
         }
 
+        /// <summary>归还时通知实例生命周期。</summary>
         static void NotifyReturn(T item)
         {
             if (item is IPoolLifecycle lifecycle)

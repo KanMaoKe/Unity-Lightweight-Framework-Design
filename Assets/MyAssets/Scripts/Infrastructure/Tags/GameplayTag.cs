@@ -10,6 +10,7 @@ namespace LiteFW
         /// <summary>无效标签。</summary>
         public static readonly GameplayTag Invalid = default;
 
+        /// <summary>标签的稳定 Id。</summary>
         readonly int m_Id;
 
         /// <summary>用内部 Id 创建标签。</summary>
@@ -33,8 +34,10 @@ namespace LiteFW
         /// <summary>计算标签哈希。</summary>
         public override int GetHashCode() => m_Id;
 
+        /// <summary>按 Id 判断标签相等。</summary>
         public static bool operator ==(GameplayTag left, GameplayTag right) => left.m_Id == right.m_Id;
 
+        /// <summary>按 Id 判断标签不相等。</summary>
         public static bool operator !=(GameplayTag left, GameplayTag right) => left.m_Id != right.m_Id;
 
         /// <summary>输出标签调试信息。</summary>

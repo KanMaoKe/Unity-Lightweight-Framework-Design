@@ -84,6 +84,7 @@ namespace LiteFW
             State = PanelState.Released;
         }
 
+        /// <summary>按状态关闭面板并通知管理器。</summary>
         private void CloseInternal(bool isShutdown)
         {
             if (State == PanelState.Released)

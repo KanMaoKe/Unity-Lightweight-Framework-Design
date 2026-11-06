@@ -5,6 +5,7 @@ namespace LiteFW
     /// </summary>
     public interface IGameplayTagSource
     {
+        /// <summary>向注册器提交标签路径。</summary>
         void Collect(IGameplayTagRegistration registration);
     }
 }

@@ -18,6 +18,7 @@ namespace LiteFW.Editor
                 BindControls();
         }
 
+        /// <summary>将扫描到的控件引用写入面板字段。</summary>
         private void BindControls()
         {
             BasePanel panel = (BasePanel)target;

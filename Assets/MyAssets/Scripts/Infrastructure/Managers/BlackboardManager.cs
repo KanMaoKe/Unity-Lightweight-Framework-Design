@@ -12,8 +12,10 @@ namespace LiteFW
         /// <summary>全局单例。</summary>
         public static BlackboardManager Instance { get; private set; }
 
+        /// <summary>类型到黑板实例的映射。</summary>
         private readonly Dictionary<Type, object> m_Blackboards = new Dictionary<Type, object>();
 
+        /// <summary>确认单例归属并跨场景保留。</summary>
         void Awake()
         {
             if (Instance != null && Instance != this)
@@ -27,6 +29,7 @@ namespace LiteFW
                 DontDestroyOnLoad(gameObject);
         }
 
+        /// <summary>清空黑板并释放单例。</summary>
         void OnDestroy()
         {
             if (Instance != this)

@@ -8,6 +8,7 @@ namespace LiteFW
     [CreateAssetMenu(fileName = "UIPanelRegistry", menuName = "LiteFW/UI/Panel Registry")]
     public sealed class UIPanelRegistry : ScriptableObject
     {
+        /// <summary>序列化保存的面板配置。</summary>
         [SerializeField] private List<PanelConfig> m_Panels = new List<PanelConfig>();
 
         /// <summary>全部已注册面板配置。</summary>

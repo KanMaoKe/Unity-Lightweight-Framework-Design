@@ -36,7 +36,9 @@ namespace LiteFW
     /// </summary>
     internal sealed class ResourcesAssetHandle<T> : IAssetHandle<T> where T : UnityEngine.Object
     {
+        /// <summary>已加载的资源实例。</summary>
         private readonly T m_Asset;
+        /// <summary>框架内是否仍持有该资源。</summary>
         private bool m_IsValid = true;
 
         /// <summary>创建 Resources 资源句柄。</summary>

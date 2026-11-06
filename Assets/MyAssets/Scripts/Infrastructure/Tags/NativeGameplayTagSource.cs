@@ -7,6 +7,7 @@ namespace LiteFW
     /// </summary>
     public sealed class NativeGameplayTagSource : IGameplayTagSource
     {
+        /// <summary>业务提供的标签路径。</summary>
         private readonly string[] m_Paths;
 
         /// <summary>用标签路径创建数据源。</summary>

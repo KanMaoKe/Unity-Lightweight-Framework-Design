@@ -8,6 +8,7 @@ namespace LiteFW
     /// </summary>
     public class EventGroup
     {
+        /// <summary>登记的退订动作。</summary>
         private readonly List<Action> unsubscribeActions = new List<Action>();
 
         /// <summary>

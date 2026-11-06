@@ -9,6 +9,7 @@ namespace LiteFW
     /// <summary>负责面板配置、异步加载、实例缓存与生命周期。</summary>
     public class UIManager : IDisposable
     {
+        /// <summary>全局单例实例。</summary>
         private static UIManager _instance;
 
         /// <summary>全局单例。</summary>
@@ -22,17 +23,27 @@ namespace LiteFW
             }
         }
 
+        /// <summary>面板配置表。</summary>
         private readonly Dictionary<string, PanelConfig> m_Configs = new Dictionary<string, PanelConfig>();
+        /// <summary>已打开面板表。</summary>
         private readonly Dictionary<string, BasePanel> m_OpenPanels = new Dictionary<string, BasePanel>();
+        /// <summary>已缓存的面板实例。</summary>
         private readonly Dictionary<string, BasePanel> m_CachedPanels = new Dictionary<string, BasePanel>();
+        /// <summary>预制体与资源句柄缓存。</summary>
         private readonly Dictionary<string, PrefabEntry> m_PrefabCache = new Dictionary<string, PrefabEntry>();
+        /// <summary>进行中的加载任务。</summary>
         private readonly Dictionary<string, UniTask<BasePanel>> m_LoadingRequests = new Dictionary<string, UniTask<BasePanel>>();
+        /// <summary>层到根节点的映射。</summary>
         private readonly Dictionary<PanelLayer, UILayerRoot> m_Layers = new Dictionary<PanelLayer, UILayerRoot>();
 
+        /// <summary>当前资源提供器。</summary>
         private IAssetProvider m_Assets = new ResourcesAssetProvider();
+        /// <summary>UI 根节点。</summary>
         private Transform m_Root;
+        /// <summary>是否已释放。</summary>
         private bool m_IsDisposed;
 
+        /// <summary>预制体缓存项。</summary>
         private sealed class PrefabEntry
         {
             /// <summary>创建预制体缓存项。</summary>
@@ -207,6 +218,7 @@ namespace LiteFW
             _instance = null;
         }
 
+        /// <summary>加载预制体、创建实例并打开面板。</summary>
         private async UniTask<BasePanel> LoadAndOpenAsync(PanelConfig config, CancellationToken cancellationToken)
         {
             IAssetHandle<GameObject> pendingHandle = null;
@@ -264,6 +276,7 @@ namespace LiteFW
             }
         }
 
+        /// <summary>激活缓存面板并登记打开状态。</summary>
         private void OpenCachedPanel(BasePanel panel, PanelConfig config)
         {
             m_OpenPanels[config.PanelId] = panel;
@@ -272,6 +285,7 @@ namespace LiteFW
             SortLayer(config.Layer);
         }
 
+        /// <summary>按配置顺序重排同层面板实例。</summary>
         private void SortLayer(PanelLayer layer)
         {
             if (!m_Layers.TryGetValue(layer, out UILayerRoot layerRoot))
@@ -289,12 +303,14 @@ namespace LiteFW
                 ordered[i].transform.SetSiblingIndex(i);
         }
 
+        /// <summary>创建三层 Canvas 根节点。</summary>
         private void EnsureLayers()
         {
             foreach (PanelLayer layer in Enum.GetValues(typeof(PanelLayer)))
                 GetLayerRoot(layer);
         }
 
+        /// <summary>获取或创建指定层的根节点。</summary>
         private UILayerRoot GetLayerRoot(PanelLayer layer)
         {
             if (m_Layers.TryGetValue(layer, out UILayerRoot existing) && existing != null)
@@ -308,6 +324,7 @@ namespace LiteFW
             return layerRoot;
         }
 
+        /// <summary>释放并销毁面板实例。</summary>
         private void DestroyPanel(BasePanel panel)
         {
             if (panel == null)
@@ -318,12 +335,14 @@ namespace LiteFW
             UnityEngine.Object.Destroy(panel.gameObject);
         }
 
+        /// <summary>面板自行关闭时移除打开记录。</summary>
         private void OnPanelClosed(BasePanel panel)
         {
             if (m_OpenPanels.TryGetValue(panel.PanelId, out BasePanel openPanel) && openPanel == panel)
                 m_OpenPanels.Remove(panel.PanelId);
         }
 
+        /// <summary>清理加载失败的半成品实例与记录。</summary>
         private void DestroyFailedPanel(string name, BasePanel panel, GameObject instance)
         {
             m_OpenPanels.Remove(name);
@@ -338,6 +357,7 @@ namespace LiteFW
                 UnityEngine.Object.Destroy(instance);
         }
 
+        /// <summary>释放全部预制体资源句柄。</summary>
         private void ReleasePrefabs()
         {
             foreach (PrefabEntry entry in m_PrefabCache.Values)
@@ -345,6 +365,7 @@ namespace LiteFW
             m_PrefabCache.Clear();
         }
 
+        /// <summary>释放指定面板的预制体句柄。</summary>
         private void ReleasePrefab(string name)
         {
             if (!m_PrefabCache.TryGetValue(name, out PrefabEntry entry))

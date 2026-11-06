@@ -9,14 +9,20 @@ namespace LiteFW
     /// </summary>
     public sealed class GameplayTagManager : IGameplayTagManager, IGameplayTagRegistration
     {
+        /// <summary>标签路径格式校验规则。</summary>
         static readonly Regex s_PathPattern = new(
             @"\A[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)*\z",
             RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+        /// <summary>路径到标签 Id 的映射。</summary>
         readonly Dictionary<string, int> m_PathToId = new(StringComparer.Ordinal);
+        /// <summary>标签 Id 到节点的映射。</summary>
         readonly Dictionary<int, TagNode> m_Nodes = new();
+        /// <summary>全部已注册标签。</summary>
         readonly List<GameplayTag> m_AllTags = new();
+        /// <summary>是否已禁止继续注册。</summary>
         bool m_Sealed;
+        /// <summary>下一个可分配的 Id。</summary>
         int m_NextId = 1;
 
         /// <summary>根据数据源创建并密封标签管理器。</summary>
@@ -41,6 +47,7 @@ namespace LiteFW
             return new GameplayTagManager(sources);
         }
 
+        /// <summary>注册一条显式标签路径。</summary>
         void IGameplayTagRegistration.Register(string path)
         {
             if (m_Sealed)
@@ -103,6 +110,7 @@ namespace LiteFW
         /// <summary>获取全部已注册标签。</summary>
         public IReadOnlyList<GameplayTag> GetAllTags() => m_AllTags;
 
+        /// <summary>补齐路径中缺失的父级节点。</summary>
         void EnsurePathHierarchy(string fullPath)
         {
             string[] segments = fullPath.Split('.');
@@ -136,6 +144,7 @@ namespace LiteFW
             }
         }
 
+        /// <summary>校验标签路径格式。</summary>
         static void ValidatePath(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -146,6 +155,7 @@ namespace LiteFW
                     nameof(path));
         }
 
+        /// <summary>标签注册表节点。</summary>
         readonly struct TagNode
         {
             /// <summary>标签注册路径。</summary>

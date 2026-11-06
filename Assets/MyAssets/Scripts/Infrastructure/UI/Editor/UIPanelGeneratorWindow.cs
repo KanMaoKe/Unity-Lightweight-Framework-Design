@@ -10,8 +10,11 @@ namespace LiteFW.Editor
         /// <summary>面板注册资产路径。</summary>
         internal const string RegistryPath = "Assets/Resources/UI/UIPanelRegistry.asset";
 
+        /// <summary>目标预制体路径。</summary>
         private string m_PrefabPath;
+        /// <summary>窗口当前选择的层。</summary>
         private PanelLayer m_Layer = PanelLayer.Main;
+        /// <summary>窗口当前选择的层内顺序。</summary>
         private int m_Order = 100;
 
         /// <summary>打开指定预制体的生成参数窗口。</summary>
@@ -22,6 +25,7 @@ namespace LiteFW.Editor
             window.Show();
         }
 
+        /// <summary>绘制参数与冲突提示并触发生成。</summary>
         private void OnGUI()
         {
             if (string.IsNullOrEmpty(m_PrefabPath) || AssetDatabase.LoadAssetAtPath<GameObject>(m_PrefabPath) == null)

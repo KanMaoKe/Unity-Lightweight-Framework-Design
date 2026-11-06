@@ -8,6 +8,7 @@ namespace LiteFW
     /// </summary>
     public sealed class GameplayTagContainer
     {
+        /// <summary>容器内标签的 Id 集合。</summary>
         readonly HashSet<int> m_TagIds = new();
 
         /// <summary>容器内标签数量。</summary>

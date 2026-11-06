@@ -12,7 +12,9 @@ namespace LiteFW
     /// </summary>
     public static class EventBus
     {
+        /// <summary>事件类型到通道的映射。</summary>
         private static readonly Dictionary<Type, object> events = new Dictionary<Type, object>();
+        /// <summary>作用域键到通道的映射。</summary>
         private static readonly Dictionary<ScopedEventKey, object> scopedEvents = new Dictionary<ScopedEventKey, object>();
 
         /// <summary>
@@ -134,7 +136,9 @@ namespace LiteFW
         /// </summary>
         private readonly struct ScopedEventKey : IEquatable<ScopedEventKey>
         {
+            /// <summary>事件隔离的作用域对象。</summary>
             private readonly object scope;
+            /// <summary>通道对应的事件类型。</summary>
             private readonly Type eventType;
 
             /// <summary>创建作用域键。</summary>
@@ -173,7 +177,9 @@ namespace LiteFW
         /// </summary>
         private sealed class EventChannel<T> where T : struct, IEventMessage
         {
+            /// <summary>当前生效的订阅者。</summary>
             private List<Action<T>> listeners = new List<Action<T>>();
+            /// <summary>发布期间暂存的订阅变更。</summary>
             private List<Action<T>> pending = new List<Action<T>>();
 
             /// <summary>发布嵌套深度。</summary>

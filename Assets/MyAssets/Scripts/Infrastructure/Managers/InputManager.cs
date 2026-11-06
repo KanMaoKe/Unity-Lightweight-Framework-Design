@@ -8,8 +8,10 @@ namespace LiteFW
     /// </summary>
     public class InputManager : MonoBehaviour
     {
+        /// <summary>缓存的主相机。</summary>
         private Camera mainCamera;
 
+        /// <summary>补齐主相机引用。</summary>
         void Update()
         {
             if (mainCamera == null)

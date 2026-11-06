@@ -6,7 +6,9 @@ namespace LiteFW
     /// <summary>单个 UI 层的 Canvas 根节点。</summary>
     public sealed class UILayerRoot : MonoBehaviour
     {
+        /// <summary>层 Canvas 组件。</summary>
         private Canvas m_Canvas;
+        /// <summary>层分辨率适配组件。</summary>
         private CanvasScaler m_CanvasScaler;
 
         /// <summary>所属大层。</summary>

@@ -33,6 +33,7 @@ namespace LiteFW
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
+        /// <summary>Unity 场景加载完成后发布事件。</summary>
         void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             EventBus.Publish(new SceneLoadedEvent(scene, mode));

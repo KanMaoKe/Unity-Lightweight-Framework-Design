@@ -5,8 +5,11 @@ namespace LiteFW
     /// <summary>UI 面板所属的大层。</summary>
     public enum PanelLayer
     {
+        /// <summary>背景层。</summary>
         Background = 0,
+        /// <summary>主界面层。</summary>
         Main = 1,
+        /// <summary>弹窗层。</summary>
         Popup = 2
     }
 

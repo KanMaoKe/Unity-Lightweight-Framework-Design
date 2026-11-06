@@ -17,6 +17,7 @@ namespace LiteFW
     /// </summary>
     public class AudioManager : MonoBehaviour
     {
+        /// <summary>单例实例。</summary>
         private static AudioManager _instance;
 
         /// <summary>
@@ -35,22 +36,34 @@ namespace LiteFW
             }
         }
 
+        /// <summary>初始化时预创建的播放器数量。</summary>
         [Header("播放器对象池")]
         [Tooltip("预热数量：初始化时预创建的空闲播放器数量")]
         [SerializeField] private int poolPrewarmCount = 8;
 
+        /// <summary>池容量上限，超出后归还即销毁。</summary>
         [Tooltip("池最大容量：超出后归还的播放器会被销毁")]
         [SerializeField] private int poolMaxSize = 64;
 
         [Header("AudioMixer 分组（可选）")]
+
+        /// <summary>BGM 输出的 Mixer 分组。</summary>
         [SerializeField] private AudioMixerGroup bgmGroup;
+
+        /// <summary>音效输出的 Mixer 分组。</summary>
         [SerializeField] private AudioMixerGroup sfxGroup;
 
+        /// <summary>当前音频资源提供器。</summary>
         private IAssetProvider m_Assets;
+        /// <summary>音效播放器对象池。</summary>
         private ObjectPool<AudioSource> m_SourcePool;
+        /// <summary>进行中的播放记录。</summary>
         private readonly List<Playback> m_ActivePlaybacks = new List<Playback>();
+        /// <summary>下一个可分配的播放标识。</summary>
         private int m_NextPlaybackId = 1;
+        /// <summary>BGM 专用播放器。</summary>
         private AudioSource m_BgmSource;
+        /// <summary>当前 BGM 的资源句柄。</summary>
         private IAssetHandle<AudioClip> m_BgmHandle;
 
         /// <summary>
@@ -84,6 +97,7 @@ namespace LiteFW
             public IAssetHandle<AudioClip> AssetHandle { get; }
         }
 
+        /// <summary>确认单例归属并初始化音频系统。</summary>
         void Awake()
         {
             if (_instance != null && _instance != this)
@@ -97,11 +111,13 @@ namespace LiteFW
             Init();
         }
 
+        /// <summary>每帧回收播放并更新跟随位置。</summary>
         void Update()
         {
             Tick();
         }
 
+        /// <summary>销毁时停止 BGM 并释放资源。</summary>
         void OnDestroy()
         {
             if (_instance != this)
@@ -242,6 +258,7 @@ namespace LiteFW
             ReleaseBgmHandle();
         }
 
+        /// <summary>创建播放器池与 BGM 播放器。</summary>
         private void Init()
         {
             m_Assets ??= new ResourcesAssetProvider();
@@ -276,6 +293,7 @@ namespace LiteFW
                 m_SourcePool.Release(prewarmed[i]);
         }
 
+        /// <summary>加载音频并从池中取播放器开始播放。</summary>
         private async UniTask<AudioHandle> PlayAsync(
             string assetKey,
             Vector3 position,
@@ -334,6 +352,7 @@ namespace LiteFW
             }
         }
 
+        /// <summary>归还指定播放器并释放其资源句柄。</summary>
         private void ReleaseAt(int index)
         {
             Playback playback = m_ActivePlaybacks[index];
@@ -342,6 +361,7 @@ namespace LiteFW
             playback.AssetHandle.Dispose();
         }
 
+        /// <summary>释放当前 BGM 资源句柄。</summary>
         private void ReleaseBgmHandle()
         {
             if (m_BgmHandle == null)
@@ -351,6 +371,7 @@ namespace LiteFW
             m_BgmHandle = null;
         }
 
+        /// <summary>在管理器下创建待用的播放器。</summary>
         private AudioSource CreateSource()
         {
             var go = new GameObject("AudioSource");
@@ -361,11 +382,13 @@ namespace LiteFW
             return source;
         }
 
+        /// <summary>取出播放器时激活其对象。</summary>
         private static void OnGetSource(AudioSource source)
         {
             source.gameObject.SetActive(true);
         }
 
+        /// <summary>归还播放器时重置状态并隐藏。</summary>
         private void OnReleaseSource(AudioSource source)
         {
             source.Stop();
@@ -379,6 +402,7 @@ namespace LiteFW
             source.gameObject.SetActive(false);
         }
 
+        /// <summary>销毁不再需要的播放器。</summary>
         private static void OnDestroySource(AudioSource source)
         {
             if (source != null)

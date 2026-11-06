@@ -31,7 +31,7 @@ namespace LiteFW
         public bool IsInitialized { get; private set; }
 
         /// <summary>初始化面板配置。</summary>
-        public void Configure(PanelConfig config)
+        internal void Configure(PanelConfig config)
         {
             if (config == null)
                 throw new System.ArgumentNullException(nameof(config));
@@ -43,7 +43,7 @@ namespace LiteFW
         }
 
         /// <summary>首次创建时初始化。</summary>
-        public void Initialize(object userData = null)
+        internal void Initialize(object userData = null)
         {
             if (IsInitialized)
                 return;
@@ -56,7 +56,7 @@ namespace LiteFW
         /// <summary>
         /// 打开面板。
         /// </summary>
-        public void Open(object userData = null)
+        internal void Open(object userData = null)
         {
             if (!IsInitialized)
                 Initialize(userData);
@@ -69,7 +69,7 @@ namespace LiteFW
         /// <summary>
         /// 关闭面板并保留实例。
         /// </summary>
-        public void Close()
+        internal void Close()
         {
             CloseInternal(false);
         }

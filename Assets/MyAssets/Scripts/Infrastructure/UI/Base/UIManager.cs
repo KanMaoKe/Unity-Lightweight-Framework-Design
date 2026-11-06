@@ -61,14 +61,14 @@ namespace LiteFW
         }
 
         /// <summary>设置 UI 根节点并创建三层 Canvas。</summary>
-        public void SetRoot(Transform root)
+        internal void SetRoot(Transform root)
         {
             m_Root = root ?? throw new ArgumentNullException(nameof(root));
             EnsureLayers();
         }
 
         /// <summary>替换资源提供器。</summary>
-        public void SetAssetProvider(IAssetProvider provider)
+        internal void SetAssetProvider(IAssetProvider provider)
         {
             ReleasePrefabs();
             m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));

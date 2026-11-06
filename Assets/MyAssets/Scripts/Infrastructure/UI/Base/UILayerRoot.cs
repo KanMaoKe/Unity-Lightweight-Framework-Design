@@ -18,7 +18,7 @@ namespace LiteFW
         public RectTransform Root => (RectTransform)transform;
 
         /// <summary>初始化层根：创建 Canvas、射线与分辨率适配组件。</summary>
-        public void Initialize(PanelLayer layer)
+        internal void Initialize(PanelLayer layer)
         {
             Layer = layer;
             name = layer + "Canvas";

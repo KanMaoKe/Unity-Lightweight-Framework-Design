@@ -15,7 +15,7 @@ namespace LiteFW
         public IReadOnlyList<PanelConfig> Panels => m_Panels;
 
         /// <summary>注册或覆盖同名的面板配置。</summary>
-        public void Register(PanelConfig config)
+        internal void Register(PanelConfig config)
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
@@ -33,14 +33,14 @@ namespace LiteFW
         }
 
         /// <summary>按面板名查找配置。</summary>
-        public bool TryGet(string panelId, out PanelConfig config)
+        internal bool TryGet(string panelId, out PanelConfig config)
         {
             config = m_Panels.Find(panel => panel.PanelId == panelId);
             return config != null;
         }
 
         /// <summary>移除指定面板名的配置。</summary>
-        public void Remove(string panelId)
+        internal void Remove(string panelId)
         {
             m_Panels.RemoveAll(panel => panel.PanelId == panelId);
         }

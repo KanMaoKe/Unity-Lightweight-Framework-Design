@@ -134,7 +134,7 @@ namespace LiteFW
         /// <summary>
         /// 替换资源提供器（如接入 YooAsset 时注入对应实现）。
         /// </summary>
-        public void SetAssetProvider(IAssetProvider provider)
+        internal void SetAssetProvider(IAssetProvider provider)
         {
             m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
         }

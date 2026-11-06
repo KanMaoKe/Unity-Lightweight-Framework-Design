@@ -13,6 +13,7 @@ namespace LiteFW
     /// <summary>面板层内顺序区间。</summary>
     public static class PanelLayerRules
     {
+        /// <summary>获取指定层允许的层内顺序区间。</summary>
         public static void GetRange(PanelLayer layer, out int min, out int max)
         {
             min = layer switch
@@ -25,6 +26,7 @@ namespace LiteFW
             max = min + 99;
         }
 
+        /// <summary>校验层内顺序是否合法，非法时抛出异常。</summary>
         public static void Validate(PanelLayer layer, int order)
         {
             GetRange(layer, out int min, out int max);
@@ -33,6 +35,7 @@ namespace LiteFW
                 throw new ArgumentOutOfRangeException(nameof(order), $"层内顺序必须在 {min}–{max} 之间。");
         }
 
+        /// <summary>将大层映射为 Canvas 的 SortingOrder。</summary>
         public static int SortingOrder(PanelLayer layer)
         {
             return (int)layer;
@@ -43,11 +46,16 @@ namespace LiteFW
     [Serializable]
     public sealed class PanelConfig
     {
+        /// <summary>面板唯一标识。</summary>
         public string PanelId;
+        /// <summary>资源加载路径。</summary>
         public string ResourcePath;
+        /// <summary>所属大层。</summary>
         public PanelLayer Layer;
+        /// <summary>层内显示顺序。</summary>
         public int SortOrder;
 
+        /// <summary>创建面板配置，层内顺序越界时抛出异常。</summary>
         public PanelConfig(string panelId, string resourcePath, PanelLayer layer, int sortOrder)
         {
             if (string.IsNullOrWhiteSpace(panelId))

@@ -10,8 +10,10 @@ namespace LiteFW
     {
         readonly HashSet<int> m_TagIds = new();
 
+        /// <summary>容器内标签数量。</summary>
         public int Count => m_TagIds.Count;
 
+        /// <summary>添加标签，无效标签会抛出异常。</summary>
         public void Add(GameplayTag tag)
         {
             if (!tag.IsValid)
@@ -19,8 +21,10 @@ namespace LiteFW
             m_TagIds.Add(tag.Id);
         }
 
+        /// <summary>移除标签。</summary>
         public bool Remove(GameplayTag tag) => tag.IsValid && m_TagIds.Remove(tag.Id);
 
+        /// <summary>清空容器。</summary>
         public void Clear() => m_TagIds.Clear();
 
         /// <summary>精确拥有该 Tag。</summary>
@@ -50,6 +54,7 @@ namespace LiteFW
             return false;
         }
 
+        /// <summary>是否拥有任意一个指定标签。</summary>
         public bool HasAny(IEnumerable<GameplayTag> tags, bool includeChildren, IGameplayTagManager manager)
         {
             if (tags == null)
@@ -64,6 +69,7 @@ namespace LiteFW
             return false;
         }
 
+        /// <summary>是否拥有全部指定标签。</summary>
         public bool HasAll(IEnumerable<GameplayTag> tags, bool includeChildren, IGameplayTagManager manager)
         {
             if (tags == null)
@@ -78,6 +84,7 @@ namespace LiteFW
             return true;
         }
 
+        /// <summary>枚举容器内的标签。</summary>
         public IEnumerable<GameplayTag> Enumerate()
         {
             foreach (int id in m_TagIds)

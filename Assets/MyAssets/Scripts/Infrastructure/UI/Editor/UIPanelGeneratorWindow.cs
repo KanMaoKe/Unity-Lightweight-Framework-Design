@@ -7,12 +7,14 @@ namespace LiteFW.Editor
     /// <summary>生成器参数窗口。</summary>
     public sealed class UIPanelGeneratorWindow : EditorWindow
     {
+        /// <summary>面板注册资产路径。</summary>
         internal const string RegistryPath = "Assets/Resources/UI/UIPanelRegistry.asset";
 
         private string m_PrefabPath;
         private PanelLayer m_Layer = PanelLayer.Main;
         private int m_Order = 100;
 
+        /// <summary>打开指定预制体的生成参数窗口。</summary>
         public static void Open(string prefabPath)
         {
             UIPanelGeneratorWindow window = GetWindow<UIPanelGeneratorWindow>("生成 UI 脚本");

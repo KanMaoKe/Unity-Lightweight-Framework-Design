@@ -9,11 +9,13 @@ namespace LiteFW
     {
         private readonly string[] m_Paths;
 
+        /// <summary>用标签路径创建数据源。</summary>
         public NativeGameplayTagSource(params string[] paths)
         {
             m_Paths = paths ?? throw new ArgumentNullException(nameof(paths));
         }
 
+        /// <summary>将路径注册到标签管理器。</summary>
         public void Collect(IGameplayTagRegistration registration)
         {
             if (registration == null)

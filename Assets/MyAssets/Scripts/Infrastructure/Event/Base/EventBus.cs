@@ -137,22 +137,26 @@ namespace LiteFW
             private readonly object scope;
             private readonly Type eventType;
 
+            /// <summary>创建作用域键。</summary>
             public ScopedEventKey(object scope, Type eventType)
             {
                 this.scope = scope;
                 this.eventType = eventType;
             }
 
+            /// <summary>按作用域引用与事件类型比较。</summary>
             public bool Equals(ScopedEventKey other)
             {
                 return ReferenceEquals(scope, other.scope) && eventType == other.eventType;
             }
 
+            /// <summary>按作用域引用与事件类型比较。</summary>
             public override bool Equals(object obj)
             {
                 return obj is ScopedEventKey other && Equals(other);
             }
 
+            /// <summary>计算作用域键的哈希。</summary>
             public override int GetHashCode()
             {
                 unchecked

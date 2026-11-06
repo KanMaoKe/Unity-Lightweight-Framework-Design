@@ -39,15 +39,19 @@ namespace LiteFW
         private readonly T m_Asset;
         private bool m_IsValid = true;
 
+        /// <summary>创建 Resources 资源句柄。</summary>
         internal ResourcesAssetHandle(T asset)
         {
             m_Asset = asset;
         }
 
+        /// <summary>已加载的资源。</summary>
         public T Asset => m_Asset;
 
+        /// <summary>句柄是否仍然有效。</summary>
         public bool IsValid => m_IsValid && m_Asset != null;
 
+        /// <summary>结束持有，使句柄失效。</summary>
         public void Dispose()
         {
             m_IsValid = false;

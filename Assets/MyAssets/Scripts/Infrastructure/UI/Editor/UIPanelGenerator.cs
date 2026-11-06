@@ -35,6 +35,7 @@ namespace LiteFW.Editor
             UIPanelGeneratorWindow.Open(prefabPath);
         }
 
+        /// <summary>生成面板脚本并写入注册信息。</summary>
         internal static void GenerateFiles(string prefabPath, PanelLayer layer, int order)
         {
             PanelLayerRules.Validate(layer, order);
@@ -127,6 +128,7 @@ namespace LiteFW.Editor
             return true;
         }
 
+        /// <summary>扫描预制体中符合命名约定的控件。</summary>
         internal static List<ScannedControl> ScanControls(string prefabPath)
         {
             var results = new List<ScannedControl>();
@@ -146,6 +148,7 @@ namespace LiteFW.Editor
             return results;
         }
 
+        /// <summary>将预制体路径转换为 Resources 下的资源 key。</summary>
         internal static string GetResourcePath(string prefabPath)
         {
             const string marker = "/Resources/";
@@ -200,6 +203,9 @@ namespace LiteFW.Editor
             sb.AppendLine();
             sb.AppendLine("namespace LiteFW");
             sb.AppendLine("{");
+            sb.AppendLine("    /// <summary>");
+            sb.AppendLine($"    /// {className} 面板自动生成的部分。");
+            sb.AppendLine("    /// </summary>");
             sb.AppendLine($"    public partial class {className} : BasePanel");
             sb.AppendLine("    {");
             sb.AppendLine("        // ===== UI 控件变量（工具自动扫描预制体生成）=====");
@@ -294,10 +300,14 @@ namespace LiteFW.Editor
         }
     }
 
+    /// <summary>扫描到的一个控件及其生成信息。</summary>
     public sealed class ScannedControl
     {
+        /// <summary>控件节点名。</summary>
         public string Name;
+        /// <summary>生成的字段名。</summary>
         public string FieldName;
+        /// <summary>控件组件信息。</summary>
         public UIComponentInfo Info;
     }
 }

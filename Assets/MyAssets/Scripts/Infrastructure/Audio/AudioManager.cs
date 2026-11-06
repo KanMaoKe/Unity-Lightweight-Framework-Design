@@ -58,6 +58,7 @@ namespace LiteFW
         /// </summary>
         private readonly struct Playback
         {
+            /// <summary>创建播放记录。</summary>
             public Playback(int id, AudioSource source, Transform followTarget, IAssetHandle<AudioClip> assetHandle)
             {
                 Id = id;
@@ -67,10 +68,19 @@ namespace LiteFW
                 AssetHandle = assetHandle;
             }
 
+            /// <summary>播放标识。</summary>
             public int Id { get; }
+
+            /// <summary>播放用的音频源。</summary>
             public AudioSource Source { get; }
+
+            /// <summary>是否需要跟随目标。</summary>
             public bool FollowsTarget { get; }
+
+            /// <summary>跟随目标。</summary>
             public Transform FollowTarget { get; }
+
+            /// <summary>音频资源句柄。</summary>
             public IAssetHandle<AudioClip> AssetHandle { get; }
         }
 

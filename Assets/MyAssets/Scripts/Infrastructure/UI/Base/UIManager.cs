@@ -35,13 +35,17 @@ namespace LiteFW
 
         private sealed class PrefabEntry
         {
+            /// <summary>创建预制体缓存项。</summary>
             internal PrefabEntry(GameObject prefab, IAssetHandle<GameObject> handle)
             {
                 Prefab = prefab;
                 Handle = handle;
             }
 
+            /// <summary>缓存的预制体。</summary>
             internal GameObject Prefab { get; }
+
+            /// <summary>预制体资源句柄。</summary>
             internal IAssetHandle<GameObject> Handle { get; }
         }
 

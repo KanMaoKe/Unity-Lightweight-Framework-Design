@@ -7,6 +7,7 @@ namespace LiteFW
     /// </summary>
     public class BasePanel : MonoBehaviour
     {
+        /// <summary>面板自行关闭时触发，用于同步管理器记录。</summary>
         internal event System.Action<BasePanel> Closed;
 
         /// <summary>
@@ -130,6 +131,7 @@ namespace LiteFW
             State = PanelState.Released;
         }
 
+        /// <summary>面板状态。</summary>
         public enum PanelState
         {
             Open,

@@ -5,11 +5,13 @@ namespace LiteFW
     /// </summary>
     public readonly struct AudioHandle
     {
+        /// <summary>创建播放句柄。</summary>
         internal AudioHandle(int id)
         {
             Id = id;
         }
 
+        /// <summary>播放标识。</summary>
         internal int Id { get; }
 
         /// <summary>

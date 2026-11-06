@@ -8,6 +8,7 @@ namespace LiteFW.Editor
     [CustomEditor(typeof(BasePanel), true)]
     public sealed class BasePanelEditor : global::UnityEditor.Editor
     {
+        /// <summary>绘制默认 Inspector 与绑定控件按钮。</summary>
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();

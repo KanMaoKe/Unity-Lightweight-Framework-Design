@@ -9,9 +9,13 @@ namespace LiteFW
         private Canvas m_Canvas;
         private CanvasScaler m_CanvasScaler;
 
+        /// <summary>所属大层。</summary>
         public PanelLayer Layer { get; private set; }
+
+        /// <summary>该层面板的挂载根节点。</summary>
         public RectTransform Root => (RectTransform)transform;
 
+        /// <summary>初始化层根：创建 Canvas、射线与分辨率适配组件。</summary>
         public void Initialize(PanelLayer layer)
         {
             Layer = layer;

@@ -9,6 +9,7 @@ namespace LiteFW
     /// </summary>
     internal sealed class SceneNavigator : ISceneNavigator, IDisposable
     {
+        /// <summary>创建导航服务并订阅 Unity 场景加载完成事件。</summary>
         public SceneNavigator()
         {
             SceneManager.sceneLoaded += OnSceneLoaded;

@@ -8,6 +8,7 @@ namespace LiteFW.Editor
     /// <summary>UI 控件命名约定。</summary>
     public static class UIControlConfig
     {
+        /// <summary>控件前缀到组件信息的映射。</summary>
         public static readonly Dictionary<string, UIComponentInfo> ControlMap = new Dictionary<string, UIComponentInfo>
         {
             { "Btn", new UIComponentInfo(typeof(Button), "Button") },
@@ -20,6 +21,7 @@ namespace LiteFW.Editor
             { "Scroll", new UIComponentInfo(typeof(ScrollRect), "ScrollRect") }
         };
 
+        /// <summary>Unity 默认控件名称，不生成字段。</summary>
         public static readonly HashSet<string> DefaultUnityNames = new HashSet<string>
         {
             "Button", "Text", "Image", "Raw Image", "RawImage", "Toggle", "Slider",
@@ -27,11 +29,15 @@ namespace LiteFW.Editor
         };
     }
 
+    /// <summary>控件前缀对应的组件信息。</summary>
     public sealed class UIComponentInfo
     {
+        /// <summary>控件组件类型。</summary>
         public readonly Type ComponentType;
+        /// <summary>生成字段时使用的类型名。</summary>
         public readonly string TypeName;
 
+        /// <summary>创建组件信息。</summary>
         public UIComponentInfo(Type componentType, string typeName)
         {
             ComponentType = componentType;

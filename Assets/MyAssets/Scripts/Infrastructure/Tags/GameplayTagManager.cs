@@ -19,6 +19,7 @@ namespace LiteFW
         bool m_Sealed;
         int m_NextId = 1;
 
+        /// <summary>根据数据源创建并密封标签管理器。</summary>
         public GameplayTagManager(IEnumerable<IGameplayTagSource> sources)
         {
             if (sources == null)
@@ -49,6 +50,7 @@ namespace LiteFW
             EnsurePathHierarchy(path);
         }
 
+        /// <summary>按路径请求标签，未注册时抛出异常。</summary>
         public GameplayTag RequestTag(string path)
         {
             if (!TryRequestTag(path, out GameplayTag tag))
@@ -56,6 +58,7 @@ namespace LiteFW
             return tag;
         }
 
+        /// <summary>尝试按路径请求标签。</summary>
         public bool TryRequestTag(string path, out GameplayTag tag)
         {
             tag = GameplayTag.Invalid;
@@ -69,13 +72,16 @@ namespace LiteFW
             return true;
         }
 
+        /// <summary>标签是否已在当前管理器中注册。</summary>
         public bool IsValid(GameplayTag tag) => tag.IsValid && m_Nodes.ContainsKey(tag.Id);
 
+        /// <summary>获取标签的注册路径。</summary>
         public string GetPath(GameplayTag tag)
         {
             return m_Nodes.TryGetValue(tag.Id, out TagNode node) ? node.Path : null;
         }
 
+        /// <summary>判断标签是否为目标标签或其子孙。</summary>
         public bool IsChildOf(GameplayTag tag, GameplayTag ancestor)
         {
             if (!IsValid(tag) || !IsValid(ancestor))
@@ -94,6 +100,7 @@ namespace LiteFW
             return false;
         }
 
+        /// <summary>获取全部已注册标签。</summary>
         public IReadOnlyList<GameplayTag> GetAllTags() => m_AllTags;
 
         void EnsurePathHierarchy(string fullPath)
@@ -141,10 +148,16 @@ namespace LiteFW
 
         readonly struct TagNode
         {
+            /// <summary>标签注册路径。</summary>
             public readonly string Path;
+
+            /// <summary>父标签 Id。</summary>
             public readonly int ParentId;
+
+            /// <summary>是否由子路径隐式创建。</summary>
             public readonly bool IsImplicit;
 
+            /// <summary>创建标签节点。</summary>
             public TagNode(string path, int parentId, bool isImplicit)
             {
                 Path = path;
@@ -152,6 +165,7 @@ namespace LiteFW
                 IsImplicit = isImplicit;
             }
 
+            /// <summary>将节点标记为显式注册。</summary>
             public TagNode AsExplicit() => new(Path, ParentId, false);
         }
     }

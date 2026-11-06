@@ -98,19 +98,6 @@ namespace LiteFW
             Closed?.Invoke(this);
         }
 
-        /// <summary>兼容旧调用。</summary>
-        public virtual void OpenPanel(string panelName)
-        {
-            this.panelName = panelName;
-            Open();
-        }
-
-        /// <summary>兼容旧调用。</summary>
-        public virtual void ClosePanel()
-        {
-            Close();
-        }
-
         /// <summary>首次创建回调。</summary>
         protected virtual void OnInit(object userData)
         {

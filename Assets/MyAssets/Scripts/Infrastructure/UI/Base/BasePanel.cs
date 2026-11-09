@@ -7,9 +7,6 @@ namespace LiteFW
     /// </summary>
     public class BasePanel : MonoBehaviour
     {
-        /// <summary>面板自行关闭时触发，用于同步管理器记录。</summary>
-        internal event System.Action<BasePanel> Closed;
-
         /// <summary>
         /// 面板名称。
         /// </summary>
@@ -129,7 +126,6 @@ namespace LiteFW
             if (wasOpen || isShutdown)
                 OnClose(isShutdown, null);
             gameObject.SetActive(false);
-            Closed?.Invoke(this);
         }
 
         /// <summary>首次创建回调。</summary>

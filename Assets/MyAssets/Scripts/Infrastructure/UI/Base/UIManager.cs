@@ -112,13 +112,13 @@ namespace LiteFW
         /// <summary>面板是否打开。</summary>
         public bool IsOpen(string name)
         {
-            return m_OpenPanels.ContainsKey(name);
+            return m_OpenPanels.TryGetValue(name, out BasePanel panel) && panel != null;
         }
 
         /// <summary>面板是否已有缓存实例。</summary>
         public bool HasCachedPanel(string name)
         {
-            return m_CachedPanels.ContainsKey(name) && m_CachedPanels[name] != null;
+            return m_CachedPanels.TryGetValue(name, out BasePanel panel) && panel != null;
         }
 
         /// <summary>获取已注册面板配置。</summary>
@@ -185,10 +185,11 @@ namespace LiteFW
         /// <summary>销毁指定面板实例并保留预制体缓存。</summary>
         public bool ReleasePanel(string name)
         {
-            m_OpenPanels.Remove(name);
-            if (!m_CachedPanels.Remove(name, out BasePanel panel))
+            if (!m_CachedPanels.TryGetValue(name, out BasePanel panel) || panel == null)
                 return false;
 
+            m_OpenPanels.Remove(name);
+            m_CachedPanels.Remove(name);
             DestroyPanel(panel);
             RefreshCoverage();
             return true;
@@ -253,7 +254,6 @@ namespace LiteFW
                     throw new InvalidOperationException($"面板预制体缺少 BasePanel：{config.PanelId}");
 
                 panel.Configure(config);
-                panel.Closed += OnPanelClosed;
                 panel.Initialize();
                 m_CachedPanels[config.PanelId] = panel;
                 OpenCachedPanel(panel, config);
@@ -375,16 +375,8 @@ namespace LiteFW
             if (panel == null)
                 return;
 
-            panel.Closed -= OnPanelClosed;
             panel.Release();
             UnityEngine.Object.Destroy(panel.gameObject);
-        }
-
-        /// <summary>面板自行关闭时移除打开记录。</summary>
-        private void OnPanelClosed(BasePanel panel)
-        {
-            if (m_OpenPanels.TryGetValue(panel.PanelId, out BasePanel openPanel) && openPanel == panel)
-                m_OpenPanels.Remove(panel.PanelId);
         }
 
         /// <summary>清理加载失败的半成品实例与记录。</summary>

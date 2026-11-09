@@ -318,7 +318,7 @@ namespace LiteFW
             }
         }
 
-        /// <summary>每帧驱动未暂停的打开面板。</summary>
+        /// <summary>每帧驱动打开面板。</summary>
         internal void Tick(float elapseSeconds, float realElapseSeconds)
         {
             foreach (BasePanel panel in m_OpenPanels.Values)

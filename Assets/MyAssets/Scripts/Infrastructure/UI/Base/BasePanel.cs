@@ -27,7 +27,7 @@ namespace LiteFW
         /// <summary>面板是否已初始化。</summary>
         public bool IsInitialized { get; private set; }
 
-        /// <summary>面板是否被 Popup 覆盖并暂停。</summary>
+        /// <summary>面板是否被 Popup 覆盖。</summary>
         public bool IsCovered { get; private set; }
 
         /// <summary>初始化面板配置。</summary>
@@ -114,7 +114,7 @@ namespace LiteFW
             State = PanelState.Released;
         }
 
-        /// <summary>按状态关闭面板并通知管理器。</summary>
+        /// <summary>按状态关闭并隐藏面板。</summary>
         private void CloseInternal(bool isShutdown)
         {
             if (State == PanelState.Released)

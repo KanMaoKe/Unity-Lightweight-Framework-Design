@@ -117,6 +117,30 @@ namespace LiteFW
                 scopedEvents.Remove(key);
         }
 
+        /// <summary>清理指定作用域下的全部订阅。</summary>
+        public static void ClearScope(object scope)
+        {
+            if (scope == null)
+                return;
+
+            var keys = new List<ScopedEventKey>();
+            foreach (ScopedEventKey key in scopedEvents.Keys)
+            {
+                if (ReferenceEquals(key.Scope, scope))
+                    keys.Add(key);
+            }
+
+            for (int i = 0; i < keys.Count; i++)
+                scopedEvents.Remove(keys[i]);
+        }
+
+        /// <summary>清理全部事件订阅。</summary>
+        public static void Clear()
+        {
+            events.Clear();
+            scopedEvents.Clear();
+        }
+
         /// <summary>
         /// 获取或创建某作用域下、某事件类型对应的通道。
         /// </summary>
@@ -140,6 +164,9 @@ namespace LiteFW
             private readonly object scope;
             /// <summary>通道对应的事件类型。</summary>
             private readonly Type eventType;
+
+            /// <summary>作用域对象。</summary>
+            public object Scope => scope;
 
             /// <summary>创建作用域键。</summary>
             public ScopedEventKey(object scope, Type eventType)

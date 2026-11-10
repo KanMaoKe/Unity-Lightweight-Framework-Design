@@ -25,7 +25,7 @@ namespace LiteFW
             UnityEngine.Object loaded = await request.ToUniTask(cancellationToken: cancellationToken);
             T asset = loaded as T;
             if (asset == null)
-                throw new InvalidOperationException($"资源加载失败：{key}（类型 {typeof(T).Name}）");
+                throw new AssetNotFoundException($"资源不存在：{key}（类型 {typeof(T).Name}）");
 
             return new ResourcesAssetHandle<T>(asset);
         }

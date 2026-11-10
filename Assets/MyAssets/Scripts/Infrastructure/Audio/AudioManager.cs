@@ -261,7 +261,8 @@ namespace LiteFW
         /// <summary>创建播放器池与 BGM 播放器。</summary>
         private void Init()
         {
-            m_Assets ??= new ResourcesAssetProvider();
+            if (m_Assets == null)
+                throw new InvalidOperationException("音频资源提供器尚未注入。");
 
             m_SourcePool = new ObjectPool<AudioSource>(
                 CreateSource,

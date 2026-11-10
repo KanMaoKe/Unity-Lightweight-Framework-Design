@@ -176,6 +176,7 @@ namespace LiteFW
         /// <summary>销毁前清理。</summary>
         private void OnDestroy()
         {
+            EventBus.ClearScope(this);
             State = PanelState.Released;
         }
 

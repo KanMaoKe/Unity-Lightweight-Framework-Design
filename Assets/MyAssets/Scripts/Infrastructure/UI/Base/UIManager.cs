@@ -37,7 +37,7 @@ namespace LiteFW
         private readonly Dictionary<PanelLayer, UILayerRoot> m_Layers = new Dictionary<PanelLayer, UILayerRoot>();
 
         /// <summary>当前资源提供器。</summary>
-        private IAssetProvider m_Assets = new ResourcesAssetProvider();
+        private IAssetProvider m_Assets;
         /// <summary>UI 根节点。</summary>
         private Transform m_Root;
         /// <summary>驱动打开面板 Update 的组件。</summary>
@@ -101,6 +101,30 @@ namespace LiteFW
 
             foreach (PanelConfig config in configs)
                 RegisterPanel(config);
+        }
+
+        /// <summary>从资源提供器加载并注册面板配置。</summary>
+        internal async UniTask LoadRegistryAsync(CancellationToken cancellationToken = default)
+        {
+            if (m_Assets == null)
+                throw new InvalidOperationException("UI 资源提供器尚未注入。");
+
+            IAssetHandle<UIPanelRegistry> handle = null;
+            try
+            {
+                handle = await m_Assets.LoadAsync<UIPanelRegistry>("UI/UIPanelRegistry", cancellationToken);
+                if (handle.IsValid)
+                    RegisterPanels(handle.Asset.Panels);
+            }
+            catch (AssetNotFoundException)
+            {
+                return;
+            }
+            finally
+            {
+                if (handle != null)
+                    handle.Dispose();
+            }
         }
 
         /// <summary>读取面板配置。</summary>

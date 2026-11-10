@@ -19,6 +19,15 @@ namespace LiteFW
             where T : UnityEngine.Object;
     }
 
+    /// <summary>请求的资源不存在。</summary>
+    public sealed class AssetNotFoundException : InvalidOperationException
+    {
+        /// <summary>创建资源不存在异常。</summary>
+        public AssetNotFoundException(string message) : base(message)
+        {
+        }
+    }
+
     /// <summary>
     /// 资源句柄：持有已加载资源并负责释放。
     /// </summary>

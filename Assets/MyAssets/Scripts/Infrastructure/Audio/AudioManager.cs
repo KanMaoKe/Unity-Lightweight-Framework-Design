@@ -11,6 +11,7 @@ namespace LiteFW
     /// <summary>
     /// 音频服务（全局单例）：2D / 3D / 跟随播放共用 AudioSource 对象池，
     /// 播放结束后自动回收；返回 AudioHandle 可主动停止；BGM 使用独立音源。
+    /// 单实例播放按调用方指定的分组 Key 隔离：同组新播放替换旧播放，不同组可以并存。
     /// 资源通过 IAssetProvider 按 key 加载（默认 Resources，可替换）。
     /// 备注：音频参数也可用 ScriptableObject 预设（AudioPreset，参考 StreamRoar）集中配置；
     /// 本项目规划走 Luban 配表，参数由表数据提供，故此处保持直接传参。
@@ -65,6 +66,35 @@ namespace LiteFW
         private AudioSource m_BgmSource;
         /// <summary>当前 BGM 的资源句柄。</summary>
         private IAssetHandle<AudioClip> m_BgmHandle;
+        /// <summary>各分组的单实例播放记录。</summary>
+        private readonly Dictionary<string, SinglePlayback> m_SinglePlaybacks = new Dictionary<string, SinglePlayback>();
+
+        /// <summary>一个分组的单实例播放状态。</summary>
+        private sealed class SinglePlayback
+        {
+            /// <summary>当前请求序号。</summary>
+            public int RequestId;
+
+            /// <summary>当前播放使用的音源。</summary>
+            public AudioSource Source;
+
+            /// <summary>当前播放持有的资源。</summary>
+            public IAssetHandle<AudioClip> AssetHandle;
+
+            /// <summary>归还当前音源并释放资源。</summary>
+            public void Release()
+            {
+                if (Source != null)
+                {
+                    Source.Stop();
+                    Source.clip = null;
+                }
+
+                AssetHandle?.Dispose();
+                Source = null;
+                AssetHandle = null;
+            }
+        }
 
         /// <summary>
         /// 一次播放的运行时记录。
@@ -117,7 +147,7 @@ namespace LiteFW
             Tick();
         }
 
-        /// <summary>销毁时停止 BGM 并释放资源。</summary>
+        /// <summary>销毁时停止全部播放并释放资源。</summary>
         void OnDestroy()
         {
             if (_instance != this)
@@ -127,6 +157,14 @@ namespace LiteFW
                 ReleaseAt(i);
 
             StopBGM();
+            foreach (SinglePlayback playback in m_SinglePlaybacks.Values)
+            {
+                AudioSource source = playback.Source;
+                playback.Release();
+                if (source != null)
+                    m_SourcePool.Release(source);
+            }
+            m_SinglePlaybacks.Clear();
             m_SourcePool?.Dispose();
             _instance = null;
         }
@@ -215,6 +253,97 @@ namespace LiteFW
             }
 
             return false;
+        }
+
+        /// <summary>按分组播放单实例声音；同组新播放替换旧播放。</summary>
+        public async UniTask<AudioHandle> PlaySingleAsync(
+            string groupKey,
+            string assetKey,
+            float volume = 1f,
+            float pitch = 1f,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(groupKey))
+                throw new ArgumentException("单实例分组 Key 不能为空。", nameof(groupKey));
+            if (string.IsNullOrEmpty(assetKey))
+                throw new ArgumentException("音频资源 key 不能为空。", nameof(assetKey));
+
+            if (!m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback playback))
+            {
+                playback = new SinglePlayback();
+                m_SinglePlaybacks.Add(groupKey, playback);
+            }
+
+            int requestId = ++playback.RequestId;
+            ReleaseSingle(playback);
+
+            try
+            {
+                IAssetHandle<AudioClip> assetHandle =
+                    await m_Assets.LoadAsync<AudioClip>(assetKey, cancellationToken);
+                if (!m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback current) ||
+                    current.RequestId != requestId)
+                {
+                    assetHandle.Dispose();
+                    return default;
+                }
+
+                if (!assetHandle.IsValid)
+                {
+                    assetHandle.Dispose();
+                    m_SinglePlaybacks.Remove(groupKey);
+                    return default;
+                }
+
+                AudioSource source = m_SourcePool.Get();
+                source.clip = assetHandle.Asset;
+                source.outputAudioMixerGroup = sfxGroup;
+                source.loop = false;
+                source.volume = Mathf.Clamp01(volume);
+                source.pitch = pitch;
+                source.spatialBlend = 0f;
+                source.transform.position = Vector3.zero;
+
+                current.Source = source;
+                current.AssetHandle = assetHandle;
+                source.Play();
+                return new AudioHandle(m_NextPlaybackId++);
+            }
+            catch
+            {
+                if (m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback current) &&
+                    current.RequestId == requestId)
+                {
+                    m_SinglePlaybacks.Remove(groupKey);
+                }
+                throw;
+            }
+        }
+
+        /// <summary>停止指定分组的单实例播放。</summary>
+        public bool StopSingle(string groupKey)
+        {
+            if (string.IsNullOrWhiteSpace(groupKey) ||
+                !m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback playback))
+            {
+                return false;
+            }
+
+            AudioSource source = playback.Source;
+            playback.Release();
+            m_SinglePlaybacks.Remove(groupKey);
+            if (source != null)
+                m_SourcePool.Release(source);
+            return true;
+        }
+
+        /// <summary>释放分组当前播放并归还音源。</summary>
+        private void ReleaseSingle(SinglePlayback playback)
+        {
+            AudioSource source = playback.Source;
+            playback.Release();
+            if (source != null)
+                m_SourcePool.Release(source);
         }
 
         /// <summary>
@@ -351,6 +480,19 @@ namespace LiteFW
                 if (!playback.Source.isPlaying)
                     ReleaseAt(i);
             }
+
+            if (m_SinglePlaybacks.Count == 0)
+                return;
+
+            var finishedGroups = new List<string>();
+            foreach (KeyValuePair<string, SinglePlayback> pair in m_SinglePlaybacks)
+            {
+                if (pair.Value.Source != null && !pair.Value.Source.isPlaying)
+                    finishedGroups.Add(pair.Key);
+            }
+
+            for (int i = 0; i < finishedGroups.Count; i++)
+                StopSingle(finishedGroups[i]);
         }
 
         /// <summary>归还指定播放器并释放其资源句柄。</summary>

@@ -5,6 +5,11 @@ using UnityEngine;
 
 namespace LiteFW
 {
+    /// <summary>事件数据标记接口，实现类型必须为 struct。</summary>
+    public interface IEventMessage
+    {
+    }
+
     /// <summary>
     /// 全局事件总线；仅限 Unity 主线程使用。
     /// 发布期间变更订阅会延迟到发布结束生效。

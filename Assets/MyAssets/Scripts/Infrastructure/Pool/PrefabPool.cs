@@ -4,6 +4,16 @@ using UnityEngine;
 
 namespace LiteFW
 {
+    /// <summary>对象池租借与归还回调。</summary>
+    public interface IPoolLifecycle
+    {
+        /// <summary>对象被取出时调用。</summary>
+        void OnPoolRent();
+
+        /// <summary>对象被归还时调用。</summary>
+        void OnPoolReturn();
+    }
+
     /// <summary>预制体组件对象池，按使用压力调整缓存数量。</summary>
     public sealed class PrefabPool<T> : IDisposable where T : Component
     {

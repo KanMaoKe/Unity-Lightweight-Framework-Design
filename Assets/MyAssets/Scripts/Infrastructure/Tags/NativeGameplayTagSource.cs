@@ -2,9 +2,7 @@ using System;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// C# 原生 Tag 数据源：由业务项目提供标签路径。
-    /// </summary>
+    /// <summary>由业务提供标签路径的数据源。</summary>
     public sealed class NativeGameplayTagSource : IGameplayTagSource
     {
         /// <summary>业务提供的标签路径。</summary>

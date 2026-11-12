@@ -2,9 +2,7 @@ using System.Collections.Generic;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// Tag 注册表：路径解析、层级查询与调试列举。
-    /// </summary>
+    /// <summary>Tag 注册表：路径解析、层级查询与调试列举。</summary>
     public interface IGameplayTagManager
     {
         /// <summary>严格解析已注册路径；未知或非法时抛出。</summary>

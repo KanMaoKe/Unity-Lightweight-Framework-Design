@@ -18,8 +18,8 @@ namespace LiteFW.Editor
         /// <summary>生成脚本使用的命名空间。</summary>
         private const string Namespace = "LiteFW";
 
-        [MenuItem("生成我们的自定义脚本/UI/生成 UI 脚本")]
         /// <summary>校验选中对象并打开生成窗口。</summary>
+        [MenuItem("生成我们的自定义脚本/UI/生成 UI 脚本")]
         private static void Generate()
         {
             UnityEngine.Object selected = Selection.activeObject;

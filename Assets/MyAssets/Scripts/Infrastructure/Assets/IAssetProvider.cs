@@ -5,14 +5,10 @@ using UnityEngine;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// 资源加载抽象：统一异步加载与释放契约。
-    /// </summary>
+    /// <summary>统一资源加载与句柄释放契约。</summary>
     public interface IAssetProvider
     {
-        /// <summary>
-        /// 按资源 key 异步加载资源；调用方负责释放返回的句柄。
-        /// </summary>
+        /// <summary>按资源 key 异步加载；调用方负责释放句柄。</summary>
         UniTask<IAssetHandle<T>> LoadAsync<T>(
             string key,
             CancellationToken cancellationToken = default)
@@ -28,9 +24,7 @@ namespace LiteFW
         }
     }
 
-    /// <summary>
-    /// 资源句柄：持有已加载资源并负责释放。
-    /// </summary>
+    /// <summary>已加载资源的持有句柄。</summary>
     public interface IAssetHandle<T> : IDisposable where T : UnityEngine.Object
     {
         /// <summary>加载完成的资源。</summary>

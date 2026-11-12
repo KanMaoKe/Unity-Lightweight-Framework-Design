@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace LiteFW.Editor
 {
-    /// <summary>删除 UI 预制体时同步移除注册配置，不自动删除业务脚本。</summary>
+    /// <summary>删除 UI 预制体时移除注册配置，不删除业务脚本。</summary>
     internal sealed class UIPanelAssetWatcher : AssetModificationProcessor
     {
         /// <summary>资源删除前清理对应面板注册。</summary>

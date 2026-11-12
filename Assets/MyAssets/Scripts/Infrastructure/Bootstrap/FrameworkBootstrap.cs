@@ -4,9 +4,7 @@ using UnityEngine;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// 框架启动入口：统一创建服务并管理其生命周期。
-    /// </summary>
+    /// <summary>框架启动入口，负责创建、接线和释放服务。</summary>
     [DefaultExecutionOrder(-1000)]
     public sealed class FrameworkBootstrap : MonoBehaviour
     {
@@ -80,7 +78,7 @@ namespace LiteFW
             await InitializeAsync();
         }
 
-        /// <summary>活动启动器销毁时释放服务。</summary>
+        /// <summary>启动器销毁时释放全部服务。</summary>
         void OnDestroy()
         {
             if (s_Instance != this)
@@ -137,7 +135,7 @@ namespace LiteFW
             }
         }
 
-        /// <summary>从资源提供器加载标签目录并构建标签服务。</summary>
+        /// <summary>加载标签目录；缺失时创建空标签服务。</summary>
         private async UniTask<IGameplayTagManager> LoadTagsAsync()
         {
             const string key = "Tags/GameplayTagCatalog";
@@ -178,7 +176,7 @@ namespace LiteFW
             return serviceObject.AddComponent<T>();
         }
 
-        /// <summary>按依赖顺序释放 UI、资源和场景服务。</summary>
+        /// <summary>释放全部框架服务与资源。</summary>
         private void Shutdown()
         {
             if (m_UIManager != null)

@@ -4,9 +4,7 @@ using UnityEngine.SceneManagement;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// 场景导航：封装场景加载，并把场景生命周期事件发布到全局事件总线。
-    /// </summary>
+    /// <summary>场景导航服务，发布场景加载事件。</summary>
     internal sealed class SceneNavigator : ISceneNavigator, IDisposable
     {
         /// <summary>创建导航服务并订阅 Unity 场景加载完成事件。</summary>
@@ -15,9 +13,7 @@ namespace LiteFW
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
-        /// <summary>
-        /// 异步加载场景并发布加载开始事件。
-        /// </summary>
+        /// <summary>异步加载场景并发布加载开始事件。</summary>
         public AsyncOperation LoadScene(string sceneName, LoadSceneMode mode)
         {
             AsyncOperation operation = SceneManager.LoadSceneAsync(sceneName, mode);
@@ -25,9 +21,7 @@ namespace LiteFW
             return operation;
         }
 
-        /// <summary>
-        /// 注销 Unity 场景回调。
-        /// </summary>
+        /// <summary>注销 Unity 场景回调。</summary>
         public void Dispose()
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;

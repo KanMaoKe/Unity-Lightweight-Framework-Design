@@ -3,9 +3,7 @@ using UnityEngine.SceneManagement;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// 场景开始加载事件。
-    /// </summary>
+    /// <summary>场景开始加载事件。</summary>
     public readonly struct SceneLoadingEvent : IEventMessage
     {
         /// <summary>创建场景开始加载事件。</summary>
@@ -24,9 +22,7 @@ namespace LiteFW
         public AsyncOperation Operation { get; }
     }
 
-    /// <summary>
-    /// 场景加载完成事件。
-    /// </summary>
+    /// <summary>场景加载完成事件。</summary>
     public readonly struct SceneLoadedEvent : IEventMessage
     {
         /// <summary>创建场景加载完成事件。</summary>

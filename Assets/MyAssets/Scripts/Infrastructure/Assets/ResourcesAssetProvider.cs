@@ -5,14 +5,10 @@ using UnityEngine;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// 基于 Resources 的资源提供器：开发期与小型项目实现。
-    /// </summary>
+    /// <summary>基于 Resources 的资源提供器。</summary>
     public sealed class ResourcesAssetProvider : IAssetProvider
     {
-        /// <summary>
-        /// 从 Resources 目录异步加载资源；失败时抛出异常。
-        /// </summary>
+        /// <summary>从 Resources 异步加载资源；失败时抛出异常。</summary>
         public async UniTask<IAssetHandle<T>> LoadAsync<T>(
             string key,
             CancellationToken cancellationToken = default)
@@ -31,9 +27,7 @@ namespace LiteFW
         }
     }
 
-    /// <summary>
-    /// Resources 资源句柄：只负责框架内的有效性状态。
-    /// </summary>
+    /// <summary>Resources 资源句柄，仅维护框架内有效性。</summary>
     internal sealed class ResourcesAssetHandle<T> : IAssetHandle<T> where T : UnityEngine.Object
     {
         /// <summary>已加载的资源实例。</summary>

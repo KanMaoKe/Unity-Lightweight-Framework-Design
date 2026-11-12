@@ -4,9 +4,7 @@ using UnityEngine;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// 通用 prefab 组件对象池：预热复用实例，并按使用压力动态调整缓存数量。
-    /// </summary>
+    /// <summary>预制体组件对象池，按使用压力调整缓存数量。</summary>
     public sealed class PrefabPool<T> : IDisposable where T : Component
     {
         /// <summary>由活跃数量推算缓存需求的系数。</summary>
@@ -44,6 +42,7 @@ namespace LiteFW
         /// <summary>最近一次下调缓存的时间。</summary>
         float m_LastDecayTime;
 
+        /// <summary>创建预制体对象池。</summary>
         /// <param name="prefab">池化对象的模板 prefab。</param>
         /// <param name="poolRoot">空闲实例的挂载节点。</param>
         /// <param name="initialCapacity">预热数量。</param>
@@ -83,9 +82,7 @@ namespace LiteFW
         /// <summary>当前空闲（缓存中）的实例数量。</summary>
         public int CountInactive => m_FreeItems.Count;
 
-        /// <summary>
-        /// 预热：提前创建初始容量的空闲实例。
-        /// </summary>
+        /// <summary>预热：提前创建初始容量的空闲实例。</summary>
         public void Prewarm()
         {
             if (m_Prewarmed)
@@ -97,9 +94,7 @@ namespace LiteFW
             m_Prewarmed = true;
         }
 
-        /// <summary>
-        /// 取出一个实例：池中有空闲则复用，否则新建。
-        /// </summary>
+        /// <summary>取出实例；有缓存则复用，否则新建。</summary>
         public T Get(Transform parent)
         {
             Prewarm();
@@ -117,9 +112,7 @@ namespace LiteFW
             return item;
         }
 
-        /// <summary>
-        /// 归还实例：超过目标缓存数量的实例会被销毁。
-        /// </summary>
+        /// <summary>归还实例；超过目标缓存数量的实例会被销毁。</summary>
         public void Release(T item)
         {
             if (!item)
@@ -142,9 +135,7 @@ namespace LiteFW
             m_FreeItems.Push(item);
         }
 
-        /// <summary>
-        /// 销毁池中全部实例并复位状态。
-        /// </summary>
+        /// <summary>销毁池中全部实例并复位状态。</summary>
         public void Dispose()
         {
             for (int i = 0; i < m_ClonedItems.Count; i++)
@@ -174,9 +165,7 @@ namespace LiteFW
             return clone;
         }
 
-        /// <summary>
-        /// 按当前活跃数量提升目标缓存数量：活跃越多，预留越多。
-        /// </summary>
+        /// <summary>按活跃数量提高目标缓存。</summary>
         void RaiseCachedTarget()
         {
             int demandedCachedCount = Mathf.CeilToInt(m_ActiveCount * k_CachePressureFactor);
@@ -188,9 +177,7 @@ namespace LiteFW
             m_LastDecayTime = m_LastPressureTime;
         }
 
-        /// <summary>
-        /// 压力消退后逐步下调目标缓存数量，直到最小缓存数量。
-        /// </summary>
+        /// <summary>压力消退后逐步降低目标缓存。</summary>
         void DecayCachedTarget()
         {
             if (m_TargetCachedCount <= m_MinCachedCount)

@@ -8,22 +8,13 @@ using UnityEngine.Pool;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// 音频服务（全局单例）：2D / 3D / 跟随播放共用 AudioSource 对象池，
-    /// 播放结束后自动回收；返回 AudioHandle 可主动停止；BGM 使用独立音源。
-    /// 单实例播放按调用方指定的分组 Key 隔离：同组新播放替换旧播放，不同组可以并存。
-    /// 资源通过 IAssetProvider 按 key 加载（默认 Resources，可替换）。
-    /// 备注：音频参数也可用 ScriptableObject 预设（AudioPreset，参考 StreamRoar）集中配置；
-    /// 本项目规划走 Luban 配表，参数由表数据提供，故此处保持直接传参。
-    /// </summary>
+    /// <summary>音频服务：普通音效共用播放器池，BGM 独立，单实例按分组替换。</summary>
     public class AudioManager : MonoBehaviour
     {
         /// <summary>单例实例。</summary>
         private static AudioManager _instance;
 
-        /// <summary>
-        /// 全局单例；未挂载时首次访问自动创建。
-        /// </summary>
+        /// <summary>全局单例；正式实例由启动器创建并注入资源提供器。</summary>
         public static AudioManager Instance
         {
             get
@@ -46,9 +37,8 @@ namespace LiteFW
         [Tooltip("池最大容量：超出后归还的播放器会被销毁")]
         [SerializeField] private int poolMaxSize = 64;
 
-        [Header("AudioMixer 分组（可选）")]
-
         /// <summary>BGM 输出的 Mixer 分组。</summary>
+        [Header("AudioMixer 分组（可选）")]
         [SerializeField] private AudioMixerGroup bgmGroup;
 
         /// <summary>音效输出的 Mixer 分组。</summary>
@@ -81,7 +71,7 @@ namespace LiteFW
             /// <summary>当前播放持有的资源。</summary>
             public IAssetHandle<AudioClip> AssetHandle;
 
-            /// <summary>归还当前音源并释放资源。</summary>
+            /// <summary>停止音源并释放资源句柄。</summary>
             public void Release()
             {
                 if (Source != null)
@@ -96,9 +86,7 @@ namespace LiteFW
             }
         }
 
-        /// <summary>
-        /// 一次播放的运行时记录。
-        /// </summary>
+        /// <summary>普通播放的运行时记录。</summary>
         private readonly struct Playback
         {
             /// <summary>创建播放记录。</summary>
@@ -169,17 +157,13 @@ namespace LiteFW
             _instance = null;
         }
 
-        /// <summary>
-        /// 替换资源提供器（如接入 YooAsset 时注入对应实现）。
-        /// </summary>
+        /// <summary>注入资源提供器。</summary>
         internal void SetAssetProvider(IAssetProvider provider)
         {
             m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
         }
 
-        /// <summary>
-        /// 异步播放 2D 声音（UI 音效、提示音）：不受世界位置影响。
-        /// </summary>
+        /// <summary>异步播放不受世界位置影响的 2D 声音。</summary>
         public UniTask<AudioHandle> Play2DAsync(
             string assetKey,
             float volume = 1f,
@@ -189,9 +173,7 @@ namespace LiteFW
             return PlayAsync(assetKey, Vector3.zero, false, null, volume, pitch, cancellationToken);
         }
 
-        /// <summary>
-        /// 异步播放 3D 声音：在指定世界位置发声，带距离衰减。
-        /// </summary>
+        /// <summary>异步在指定世界位置播放 3D 声音。</summary>
         public UniTask<AudioHandle> PlayAtAsync(
             string assetKey,
             Vector3 position,
@@ -202,9 +184,7 @@ namespace LiteFW
             return PlayAsync(assetKey, position, true, null, volume, pitch, cancellationToken);
         }
 
-        /// <summary>
-        /// 异步播放跟随声音：持续跟随目标位置；跟随目标销毁后自动停止。
-        /// </summary>
+        /// <summary>异步播放跟随目标的声音；目标销毁后停止。</summary>
         public UniTask<AudioHandle> PlayFollowAsync(
             string assetKey,
             Transform target,
@@ -218,9 +198,7 @@ namespace LiteFW
             return PlayAsync(assetKey, target.position, true, target, volume, pitch, cancellationToken);
         }
 
-        /// <summary>
-        /// 以随机音高异步播放 2D 声音。
-        /// </summary>
+        /// <summary>以随机音高异步播放 2D 声音。</summary>
         public UniTask<AudioHandle> Play2DRandomPitchAsync(
             string assetKey,
             float minPitch = 0.6f,
@@ -235,9 +213,7 @@ namespace LiteFW
                 cancellationToken);
         }
 
-        /// <summary>
-        /// 停止指定播放；播放已经结束或被回收时返回 false。
-        /// </summary>
+        /// <summary>停止指定普通播放。</summary>
         public bool Stop(AudioHandle handle)
         {
             if (!handle.IsValid)
@@ -320,7 +296,7 @@ namespace LiteFW
             }
         }
 
-        /// <summary>停止指定分组的单实例播放。</summary>
+        /// <summary>停止指定分组，或取消其正在加载的请求。</summary>
         public bool StopSingle(string groupKey)
         {
             if (string.IsNullOrWhiteSpace(groupKey) ||
@@ -337,7 +313,7 @@ namespace LiteFW
             return true;
         }
 
-        /// <summary>释放分组当前播放并归还音源。</summary>
+        /// <summary>释放分组当前播放。</summary>
         private void ReleaseSingle(SinglePlayback playback)
         {
             AudioSource source = playback.Source;
@@ -346,9 +322,7 @@ namespace LiteFW
                 m_SourcePool.Release(source);
         }
 
-        /// <summary>
-        /// 播放背景音乐。
-        /// </summary>
+        /// <summary>播放指定背景音乐。</summary>
         public void PlayBGM(AudioClip clip)
         {
             if (clip == null) return;
@@ -357,9 +331,7 @@ namespace LiteFW
             m_BgmSource.Play();
         }
 
-        /// <summary>
-        /// 异步按资源 key 播放背景音乐。
-        /// </summary>
+        /// <summary>异步按资源 key 播放背景音乐。</summary>
         public async UniTask<AudioHandle> PlayBGMAsync(
             string assetKey,
             float volume = 1f,
@@ -377,9 +349,7 @@ namespace LiteFW
             return new AudioHandle(m_NextPlaybackId++);
         }
 
-        /// <summary>
-        /// 停止背景音乐。
-        /// </summary>
+        /// <summary>停止背景音乐。</summary>
         public void StopBGM()
         {
             m_BgmSource.Stop();
@@ -410,9 +380,7 @@ namespace LiteFW
             m_BgmSource.outputAudioMixerGroup = bgmGroup;
         }
 
-        /// <summary>
-        /// 预先创建指定数量的播放器并归还池中，避免首次播放时创建卡顿。
-        /// </summary>
+        /// <summary>预先创建播放器并归还池中，减少首次播放卡顿。</summary>
         private void PrewarmPool(int count)
         {
             var prewarmed = new List<AudioSource>(count);
@@ -459,9 +427,7 @@ namespace LiteFW
             return new AudioHandle(playbackId);
         }
 
-        /// <summary>
-        /// 每帧回收播放结束的声音，并更新跟随位置。
-        /// </summary>
+        /// <summary>每帧回收普通与单实例播放，并更新跟随位置。</summary>
         private void Tick()
         {
             for (int i = m_ActivePlaybacks.Count - 1; i >= 0; i--)

@@ -17,7 +17,7 @@ namespace LiteFW
         /// <summary>该层面板的挂载根节点。</summary>
         public RectTransform Root => (RectTransform)transform;
 
-        /// <summary>初始化层根：创建 Canvas、射线与分辨率适配组件。</summary>
+        /// <summary>初始化层 Canvas、射线与缩放组件。</summary>
         internal void Initialize(PanelLayer layer)
         {
             Layer = layer;

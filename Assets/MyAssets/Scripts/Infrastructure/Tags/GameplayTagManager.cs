@@ -4,9 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// GameplayTag 权威注册表。构造时收集各 Source 后密封，禁止运行时动态注册。
-    /// </summary>
+    /// <summary>GameplayTag 注册表，构造后密封。</summary>
     public sealed class GameplayTagManager : IGameplayTagManager, IGameplayTagRegistration
     {
         /// <summary>标签路径格式校验规则。</summary>
@@ -41,7 +39,7 @@ namespace LiteFW
             m_Sealed = true;
         }
 
-        /// <summary>测试与工具用：仅使用给定 Source 构建。</summary>
+        /// <summary>使用指定数据源创建标签管理器。</summary>
         public static GameplayTagManager Create(params IGameplayTagSource[] sources)
         {
             return new GameplayTagManager(sources);

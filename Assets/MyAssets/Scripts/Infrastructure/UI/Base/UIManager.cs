@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace LiteFW
 {
-    /// <summary>负责面板配置、异步加载、实例缓存与生命周期。</summary>
+    /// <summary>管理面板配置、加载、缓存与生命周期。</summary>
     public class UIManager : IDisposable
     {
         /// <summary>全局单例实例。</summary>
@@ -69,7 +69,7 @@ namespace LiteFW
             EnsureLayers();
         }
 
-        /// <summary>替换资源提供器。</summary>
+        /// <summary>替换资源提供器并释放旧预制体缓存。</summary>
         internal void SetAssetProvider(IAssetProvider provider)
         {
             ReleasePrefabs();
@@ -219,7 +219,7 @@ namespace LiteFW
             return true;
         }
 
-        /// <summary>销毁所有面板与资源缓存。</summary>
+        /// <summary>释放全部面板、配置与资源缓存。</summary>
         public void Dispose()
         {
             if (m_IsDisposed)
@@ -309,7 +309,7 @@ namespace LiteFW
             RefreshCoverage();
         }
 
-        /// <summary>按 Popup 数量更新覆盖、暂停与焦点通知。</summary>
+        /// <summary>根据弹窗数量更新覆盖、恢复与焦点通知。</summary>
         private void RefreshCoverage()
         {
             int popupCount = 0;

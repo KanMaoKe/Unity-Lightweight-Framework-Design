@@ -3,9 +3,7 @@ using System.Collections.Generic;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// Tag 集合。查询父子匹配时需传入 <see cref="IGameplayTagManager"/>，且 includeChildren 为显式参数。
-    /// </summary>
+    /// <summary>Tag 集合；父子匹配需要标签管理器。</summary>
     public sealed class GameplayTagContainer
     {
         /// <summary>容器内标签的 Id 集合。</summary>
@@ -31,10 +29,7 @@ namespace LiteFW
         /// <summary>精确拥有该 Tag。</summary>
         public bool Has(GameplayTag tag) => tag.IsValid && m_TagIds.Contains(tag.Id);
 
-        /// <summary>
-        /// 是否拥有该 Tag；当 <paramref name="includeChildren"/> 为 true 时，
-        /// 拥有其任意子孙 Tag 也视为命中。
-        /// </summary>
+        /// <summary>是否拥有该 Tag 或其子孙。</summary>
         public bool Has(GameplayTag tag, bool includeChildren, IGameplayTagManager manager)
         {
             if (!tag.IsValid)

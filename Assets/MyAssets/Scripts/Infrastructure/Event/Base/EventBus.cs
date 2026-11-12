@@ -6,9 +6,8 @@ using UnityEngine;
 namespace LiteFW
 {
     /// <summary>
-    /// 全局事件总线。所有操作应在 Unity 主线程执行。
-    /// 发布事件时自动捕获异常，单个订阅者错误不影响其他订阅者。
-    /// 发布期间订阅/退订会延迟到本次发布结束后生效（双缓冲），避免遍历时修改集合，同时不产生快照分配。
+    /// 全局事件总线；仅限 Unity 主线程使用。
+    /// 发布期间变更订阅会延迟到发布结束生效。
     /// </summary>
     public static class EventBus
     {
@@ -17,18 +16,14 @@ namespace LiteFW
         /// <summary>作用域键到通道的映射。</summary>
         private static readonly Dictionary<ScopedEventKey, object> scopedEvents = new Dictionary<ScopedEventKey, object>();
 
-        /// <summary>
-        /// 订阅事件。
-        /// </summary>
+        /// <summary>订阅事件。</summary>
         public static void Subscribe<T>(Action<T> handler) where T : struct, IEventMessage
         {
             if (handler == null) throw new ArgumentNullException(nameof(handler));
             GetOrCreateChannel<T>().Subscribe(handler);
         }
 
-        /// <summary>
-        /// 取消订阅。
-        /// </summary>
+        /// <summary>取消订阅。</summary>
         public static void Unsubscribe<T>(Action<T> handler) where T : struct, IEventMessage
         {
             if (handler == null) throw new ArgumentNullException(nameof(handler));
@@ -43,9 +38,7 @@ namespace LiteFW
             }
         }
 
-        /// <summary>
-        /// 发布事件。每个订阅者独立执行，单个异常输出日志但不影响后续订阅者。
-        /// </summary>
+        /// <summary>发布事件；单个订阅者异常不影响其他订阅者。</summary>
         public static void Publish<T>(T eventData) where T : struct, IEventMessage
         {
             Type key = typeof(T);
@@ -58,9 +51,7 @@ namespace LiteFW
                 events.Remove(key);
         }
 
-        /// <summary>
-        /// 获取或创建某事件类型对应的通道。
-        /// </summary>
+        /// <summary>获取或创建事件通道。</summary>
         private static EventChannel<T> GetOrCreateChannel<T>() where T : struct, IEventMessage
         {
             Type key = typeof(T);
@@ -72,9 +63,7 @@ namespace LiteFW
             return channel;
         }
 
-        /// <summary>
-        /// 订阅指定作用域的事件。只有 scope 相同的发布才会触发。
-        /// </summary>
+        /// <summary>订阅作用域事件；仅相同 scope 的发布触发。</summary>
         public static void Subscribe<T>(object scope, Action<T> handler) where T : struct, IEventMessage
         {
             if (scope == null) throw new ArgumentNullException(nameof(scope));
@@ -82,9 +71,7 @@ namespace LiteFW
             GetOrCreateScopedChannel<T>(scope).Subscribe(handler);
         }
 
-        /// <summary>
-        /// 取消指定作用域的事件订阅。
-        /// </summary>
+        /// <summary>取消作用域事件订阅。</summary>
         public static void Unsubscribe<T>(object scope, Action<T> handler) where T : struct, IEventMessage
         {
             if (scope == null) throw new ArgumentNullException(nameof(scope));
@@ -100,9 +87,7 @@ namespace LiteFW
             }
         }
 
-        /// <summary>
-        /// 发布指定作用域的事件。只有相同 scope 的订阅者会收到。
-        /// </summary>
+        /// <summary>发布作用域事件；仅相同 scope 的订阅者收到。</summary>
         public static void Publish<T>(object scope, T eventData) where T : struct, IEventMessage
         {
             if (scope == null) throw new ArgumentNullException(nameof(scope));
@@ -141,9 +126,7 @@ namespace LiteFW
             scopedEvents.Clear();
         }
 
-        /// <summary>
-        /// 获取或创建某作用域下、某事件类型对应的通道。
-        /// </summary>
+        /// <summary>获取或创建作用域事件通道。</summary>
         private static EventChannel<T> GetOrCreateScopedChannel<T>(object scope) where T : struct, IEventMessage
         {
             var key = new ScopedEventKey(scope, typeof(T));
@@ -155,9 +138,7 @@ namespace LiteFW
             return channel;
         }
 
-        /// <summary>
-        /// 作用域键：由「作用域对象 + 事件类型」组成，用于隔离同名事件。
-        /// </summary>
+        /// <summary>作用域键：由作用域对象与事件类型组成。</summary>
         private readonly struct ScopedEventKey : IEquatable<ScopedEventKey>
         {
             /// <summary>事件隔离的作用域对象。</summary>
@@ -197,11 +178,7 @@ namespace LiteFW
             }
         }
 
-        /// <summary>
-        /// 事件通道：维护某一类型事件的所有订阅者。
-        /// 采用双缓冲（写时复制）：发布期间订阅/退订先写入 pending 列表，
-        /// 等发布完全结束后再切换生效，既避免遍历中改集合，又无需每次复制快照。
-        /// </summary>
+        /// <summary>单一事件类型的订阅者通道。</summary>
         private sealed class EventChannel<T> where T : struct, IEventMessage
         {
             /// <summary>当前生效的订阅者。</summary>
@@ -218,9 +195,7 @@ namespace LiteFW
             /// <summary>通道是否为空（不在发布中且无订阅者）。</summary>
             public bool IsEmpty => publishDepth == 0 && listeners.Count == 0;
 
-            /// <summary>
-            /// 添加订阅者（重复订阅会被忽略）。
-            /// </summary>
+            /// <summary>添加订阅者；重复订阅会被忽略。</summary>
             public void Subscribe(Action<T> handler)
             {
                 List<Action<T>> list = GetMutableListeners();
@@ -228,17 +203,13 @@ namespace LiteFW
                     list.Add(handler);
             }
 
-            /// <summary>
-            /// 移除订阅者。
-            /// </summary>
+            /// <summary>移除订阅者。</summary>
             public void Unsubscribe(Action<T> handler)
             {
                 GetMutableListeners().Remove(handler);
             }
 
-            /// <summary>
-            /// 通知所有订阅者。
-            /// </summary>
+            /// <summary>通知全部订阅者。</summary>
             public void Publish(T eventData)
             {
                 publishDepth++;
@@ -269,9 +240,7 @@ namespace LiteFW
                 }
             }
 
-            /// <summary>
-            /// 获取当前可写的列表：不在发布中直接改正式列表；发布中则改待生效列表，发布结束后再切换。
-            /// </summary>
+            /// <summary>获取当前可写的订阅列表。</summary>
             private List<Action<T>> GetMutableListeners()
             {
                 if (publishDepth == 0)

@@ -2,14 +2,10 @@ using UnityEngine;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// 面板基类：定义面板的打开与关闭流程。
-    /// </summary>
+    /// <summary>面板基类，定义状态、配置与生命周期。</summary>
     public class BasePanel : MonoBehaviour
     {
-        /// <summary>
-        /// 面板名称。
-        /// </summary>
+        /// <summary>面板名称。</summary>
         protected string panelName;
 
         /// <summary>注册的面板名。</summary>
@@ -53,9 +49,7 @@ namespace LiteFW
             OnInit(userData);
         }
 
-        /// <summary>
-        /// 打开面板。
-        /// </summary>
+        /// <summary>打开面板。</summary>
         internal void Open(object userData = null)
         {
             if (!IsInitialized)
@@ -66,9 +60,7 @@ namespace LiteFW
             OnOpen(userData);
         }
 
-        /// <summary>
-        /// 关闭面板并保留实例。
-        /// </summary>
+        /// <summary>关闭面板并保留实例。</summary>
         internal void Close()
         {
             CloseInternal(false);

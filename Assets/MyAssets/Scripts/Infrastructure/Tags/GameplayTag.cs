@@ -2,9 +2,7 @@ using System;
 
 namespace LiteFW
 {
-    /// <summary>
-    /// 已注册 GameplayTag 的轻量句柄；相等比较基于稳定 Id。
-    /// </summary>
+    /// <summary>已注册 GameplayTag 的轻量句柄；相等比较基于稳定 Id。</summary>
     public readonly struct GameplayTag : IEquatable<GameplayTag>
     {
         /// <summary>无效标签。</summary>

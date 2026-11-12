@@ -8,6 +8,7 @@ namespace LiteFW.Editor
     [CustomEditor(typeof(BasePanel), true)]
     public sealed class BasePanelEditor : global::UnityEditor.Editor
     {
+        #region 编辑器使用入口
         /// <summary>绘制默认 Inspector 与绑定控件按钮。</summary>
         public override void OnInspectorGUI()
         {
@@ -17,7 +18,9 @@ namespace LiteFW.Editor
             if (GUILayout.Button("绑定控件"))
                 BindControls();
         }
+        #endregion
 
+        #region 生成与扫描实现 / 控件绑定
         /// <summary>将扫描到的控件引用写入面板字段。</summary>
         private void BindControls()
         {
@@ -66,6 +69,7 @@ namespace LiteFW.Editor
             serialized.ApplyModifiedProperties();
             Debug.Log($"已绑定 {bound} 个控件。");
         }
+        #endregion
     }
 }
 #endif

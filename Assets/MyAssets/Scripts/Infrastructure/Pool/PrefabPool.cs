@@ -7,6 +7,7 @@ namespace LiteFW
     /// <summary>预制体组件对象池，按使用压力调整缓存数量。</summary>
     public sealed class PrefabPool<T> : IDisposable where T : Component
     {
+        #region 框架内部实现 / 状态与缓存
         /// <summary>由活跃数量推算缓存需求的系数。</summary>
         const float k_CachePressureFactor = 0.75f;
         /// <summary>允许下调缓存前的等待时长。</summary>
@@ -41,7 +42,9 @@ namespace LiteFW
         float m_LastPressureTime;
         /// <summary>最近一次下调缓存的时间。</summary>
         float m_LastDecayTime;
+        #endregion
 
+        #region 业务入口 / 池操作
         /// <summary>创建预制体对象池。</summary>
         /// <param name="prefab">池化对象的模板 prefab。</param>
         /// <param name="poolRoot">空闲实例的挂载节点。</param>
@@ -154,7 +157,9 @@ namespace LiteFW
             m_LastPressureTime = 0f;
             m_LastDecayTime = 0f;
         }
+        #endregion
 
+        #region 框架内部实现 / 缓存与生命周期辅助
         /// <summary>实例化一个新的池对象。</summary>
         T CreateClone()
         {
@@ -220,5 +225,6 @@ namespace LiteFW
             if (item is IPoolLifecycle lifecycle)
                 lifecycle.OnPoolReturn();
         }
+        #endregion
     }
 }

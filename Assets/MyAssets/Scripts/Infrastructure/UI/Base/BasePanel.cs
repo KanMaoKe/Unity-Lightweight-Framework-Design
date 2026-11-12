@@ -5,6 +5,7 @@ namespace LiteFW
     /// <summary>面板基类，定义状态、配置与生命周期。</summary>
     public class BasePanel : MonoBehaviour
     {
+        #region 框架内部实现 / 面板状态
         /// <summary>面板名称。</summary>
         protected string panelName;
 
@@ -25,7 +26,9 @@ namespace LiteFW
 
         /// <summary>面板是否被 Popup 覆盖。</summary>
         public bool IsCovered { get; private set; }
+        #endregion
 
+        #region 框架内部实现 / 生命周期流程
         /// <summary>初始化面板配置。</summary>
         internal void Configure(PanelConfig config)
         {
@@ -119,7 +122,9 @@ namespace LiteFW
                 OnClose(isShutdown, null);
             gameObject.SetActive(false);
         }
+        #endregion
 
+        #region 业务入口 / 生命周期钩子
         /// <summary>首次创建回调。</summary>
         protected virtual void OnInit(object userData)
         {
@@ -164,7 +169,9 @@ namespace LiteFW
         protected virtual void OnUpdate(float elapseSeconds, float realElapseSeconds)
         {
         }
+        #endregion
 
+        #region 框架内部实现 / 销毁清理与状态类型
         /// <summary>销毁前清理。</summary>
         private void OnDestroy()
         {
@@ -179,5 +186,6 @@ namespace LiteFW
             Hidden,
             Released
         }
+        #endregion
     }
 }

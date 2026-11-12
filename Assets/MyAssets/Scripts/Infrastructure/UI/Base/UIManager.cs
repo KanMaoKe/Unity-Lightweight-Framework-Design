@@ -9,6 +9,7 @@ namespace LiteFW
     /// <summary>管理面板配置、加载、缓存与生命周期。</summary>
     public class UIManager : IDisposable
     {
+        #region 框架内部实现 / 状态与缓存
         /// <summary>全局单例实例。</summary>
         private static UIManager _instance;
 
@@ -61,7 +62,9 @@ namespace LiteFW
             /// <summary>预制体资源句柄。</summary>
             internal IAssetHandle<GameObject> Handle { get; }
         }
+        #endregion
 
+        #region 框架内部实现 / 运行时接入
         /// <summary>设置 UI 根节点并创建三层 Canvas。</summary>
         internal void SetRoot(Transform root)
         {
@@ -75,7 +78,9 @@ namespace LiteFW
             ReleasePrefabs();
             m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
         }
+        #endregion
 
+        #region 业务入口 / 面板注册与查询
         /// <summary>注册面板配置。</summary>
         public void RegisterPanel(PanelConfig config)
         {
@@ -102,7 +107,9 @@ namespace LiteFW
             foreach (PanelConfig config in configs)
                 RegisterPanel(config);
         }
+        #endregion
 
+        #region 框架内部实现 / 注册表加载
         /// <summary>从资源提供器加载并注册面板配置。</summary>
         internal async UniTask LoadRegistryAsync(CancellationToken cancellationToken = default)
         {
@@ -126,7 +133,9 @@ namespace LiteFW
                     handle.Dispose();
             }
         }
+        #endregion
 
+        #region 业务入口 / 面板查询
         /// <summary>读取面板配置。</summary>
         public bool TryGetConfig(string name, out PanelConfig config)
         {
@@ -147,7 +156,9 @@ namespace LiteFW
 
         /// <summary>获取已注册面板配置。</summary>
         public IReadOnlyCollection<PanelConfig> Configs => m_Configs.Values;
+        #endregion
 
+        #region 业务入口 / 面板操作与释放
         /// <summary>异步打开面板。</summary>
         public async UniTask<BasePanel> OpenPanelAsync(string name, CancellationToken cancellationToken = default)
         {
@@ -241,7 +252,9 @@ namespace LiteFW
             m_UpdateDriver = null;
             _instance = null;
         }
+        #endregion
 
+        #region 框架内部实现 / 加载、层级与清理
         /// <summary>加载预制体、创建实例并打开面板。</summary>
         private async UniTask<BasePanel> LoadAndOpenAsync(PanelConfig config, CancellationToken cancellationToken)
         {
@@ -435,5 +448,6 @@ namespace LiteFW
             m_PrefabCache.Remove(name);
             entry.Handle.Dispose();
         }
+        #endregion
     }
 }

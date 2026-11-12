@@ -6,9 +6,12 @@ namespace LiteFW
     /// <summary>Tag 集合；父子匹配需要标签管理器。</summary>
     public sealed class GameplayTagContainer
     {
+        #region 框架内部实现 / 标签存储
         /// <summary>容器内标签的 Id 集合。</summary>
         readonly HashSet<int> m_TagIds = new();
+        #endregion
 
+        #region 业务入口 / 集合操作与查询
         /// <summary>容器内标签数量。</summary>
         public int Count => m_TagIds.Count;
 
@@ -86,5 +89,6 @@ namespace LiteFW
             foreach (int id in m_TagIds)
                 yield return new GameplayTag(id);
         }
+        #endregion
     }
 }

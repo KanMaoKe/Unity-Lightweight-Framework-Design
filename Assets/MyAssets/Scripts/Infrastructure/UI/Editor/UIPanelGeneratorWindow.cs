@@ -7,6 +7,7 @@ namespace LiteFW.Editor
     /// <summary>生成器参数窗口。</summary>
     public sealed class UIPanelGeneratorWindow : EditorWindow
     {
+        #region 生成与扫描实现 / 窗口状态
         /// <summary>面板注册资产路径。</summary>
         internal const string RegistryPath = "Assets/Resources/UI/UIPanelRegistry.asset";
 
@@ -16,7 +17,9 @@ namespace LiteFW.Editor
         private PanelLayer m_Layer = PanelLayer.Main;
         /// <summary>窗口当前选择的层内顺序。</summary>
         private int m_Order = 100;
+        #endregion
 
+        #region 编辑器使用入口
         /// <summary>打开指定预制体的生成参数窗口。</summary>
         public static void Open(string prefabPath)
         {
@@ -24,7 +27,9 @@ namespace LiteFW.Editor
             window.m_PrefabPath = prefabPath;
             window.Show();
         }
+        #endregion
 
+        #region 生成与扫描实现 / 参数与生成界面
         /// <summary>绘制参数与冲突提示并触发生成。</summary>
         private void OnGUI()
         {
@@ -82,6 +87,7 @@ namespace LiteFW.Editor
                 }
             }
         }
+        #endregion
     }
 }
 #endif

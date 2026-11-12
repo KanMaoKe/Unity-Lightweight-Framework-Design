@@ -7,6 +7,7 @@ namespace LiteFW
     /// <summary>按预制体统一创建、复用和释放对象池。</summary>
     public sealed class PoolManager : IDisposable
     {
+        #region 框架内部实现 / 池记录与状态
         /// <summary>池实例与创建参数的记录。</summary>
         private sealed class PoolEntry : IDisposable
         {
@@ -46,7 +47,9 @@ namespace LiteFW
 
         /// <summary>是否已释放。</summary>
         private bool m_IsDisposed;
+        #endregion
 
+        #region 业务入口 / 池管理
         /// <summary>创建对象池管理器。</summary>
         public PoolManager(Transform root)
         {
@@ -105,5 +108,6 @@ namespace LiteFW
                 entry.Dispose();
             m_Pools.Clear();
         }
+        #endregion
     }
 }

@@ -8,6 +8,7 @@ namespace LiteFW
     [DefaultExecutionOrder(-1000)]
     public sealed class FrameworkBootstrap : MonoBehaviour
     {
+        #region 框架内部实现 / 启动状态
         /// <summary>场景中活动的启动器实例。</summary>
         private static FrameworkBootstrap s_Instance;
 
@@ -33,7 +34,9 @@ namespace LiteFW
         private bool m_Initialized;
         /// <summary>是否正在初始化。</summary>
         private bool m_Initializing;
+        #endregion
 
+        #region 业务入口 / 服务访问
         /// <summary>当前活动的启动器。</summary>
         public static FrameworkBootstrap Instance => s_Instance;
 
@@ -63,7 +66,9 @@ namespace LiteFW
 
         /// <summary>资源提供器。</summary>
         public IAssetProvider Assets => m_Assets;
+        #endregion
 
+        #region 框架生命周期
         /// <summary>建立单例并启动框架初始化。</summary>
         private async void Awake()
         {
@@ -87,7 +92,9 @@ namespace LiteFW
             Shutdown();
             s_Instance = null;
         }
+        #endregion
 
+        #region 业务入口 / 启动配置
         /// <summary>替换资源提供器；须在启动器初始化前设置。</summary>
         public void SetAssetProvider(IAssetProvider provider)
         {
@@ -96,7 +103,9 @@ namespace LiteFW
 
             m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
         }
+        #endregion
 
+        #region 框架内部实现 / 初始化与释放
         /// <summary>按顺序创建并接线各框架服务。</summary>
         private async UniTask InitializeAsync()
         {
@@ -208,5 +217,6 @@ namespace LiteFW
             m_Initialized = false;
             m_Initializing = false;
         }
+        #endregion
     }
 }

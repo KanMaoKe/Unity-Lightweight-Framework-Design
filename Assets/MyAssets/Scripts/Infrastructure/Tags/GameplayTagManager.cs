@@ -7,6 +7,7 @@ namespace LiteFW
     /// <summary>GameplayTag 注册表，构造后密封。</summary>
     public sealed class GameplayTagManager : IGameplayTagManager, IGameplayTagRegistration
     {
+        #region 框架内部实现 / 注册状态
         /// <summary>标签路径格式校验规则。</summary>
         static readonly Regex s_PathPattern = new(
             @"\A[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)*\z",
@@ -22,7 +23,9 @@ namespace LiteFW
         bool m_Sealed;
         /// <summary>下一个可分配的 Id。</summary>
         int m_NextId = 1;
+        #endregion
 
+        #region 框架内部实现 / 构建
         /// <summary>根据数据源创建并密封标签管理器。</summary>
         public GameplayTagManager(IEnumerable<IGameplayTagSource> sources)
         {
@@ -44,7 +47,9 @@ namespace LiteFW
         {
             return new GameplayTagManager(sources);
         }
+        #endregion
 
+        #region 框架内部实现 / 注册
         /// <summary>注册一条显式标签路径。</summary>
         void IGameplayTagRegistration.Register(string path)
         {
@@ -54,7 +59,9 @@ namespace LiteFW
             ValidatePath(path);
             EnsurePathHierarchy(path);
         }
+        #endregion
 
+        #region 业务入口 / 标签查询
         /// <summary>按路径请求标签，未注册时抛出异常。</summary>
         public GameplayTag RequestTag(string path)
         {
@@ -107,7 +114,9 @@ namespace LiteFW
 
         /// <summary>获取全部已注册标签。</summary>
         public IReadOnlyList<GameplayTag> GetAllTags() => m_AllTags;
+        #endregion
 
+        #region 框架内部实现 / 层级构建与校验
         /// <summary>补齐路径中缺失的父级节点。</summary>
         void EnsurePathHierarchy(string fullPath)
         {
@@ -176,5 +185,6 @@ namespace LiteFW
             /// <summary>将节点标记为显式注册。</summary>
             public TagNode AsExplicit() => new(Path, ParentId, false);
         }
+        #endregion
     }
 }

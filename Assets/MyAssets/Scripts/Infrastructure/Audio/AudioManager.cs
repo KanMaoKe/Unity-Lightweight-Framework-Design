@@ -11,9 +11,12 @@ namespace LiteFW
     /// <summary>音频服务：普通音效共用播放器池，BGM 独立，单实例按分组替换。</summary>
     public class AudioManager : MonoBehaviour
     {
+        #region 框架内部实现 / 单例状态
         /// <summary>单例实例。</summary>
         private static AudioManager _instance;
+        #endregion
 
+        #region 业务入口 / 单例
         /// <summary>全局单例；正式实例由启动器创建并注入资源提供器。</summary>
         public static AudioManager Instance
         {
@@ -27,7 +30,9 @@ namespace LiteFW
                 return _instance;
             }
         }
+        #endregion
 
+        #region 框架内部实现 / 配置与运行时状态
         /// <summary>初始化时预创建的播放器数量。</summary>
         [Header("播放器对象池")]
         [Tooltip("预热数量：初始化时预创建的空闲播放器数量")]
@@ -114,7 +119,9 @@ namespace LiteFW
             /// <summary>音频资源句柄。</summary>
             public IAssetHandle<AudioClip> AssetHandle { get; }
         }
+        #endregion
 
+        #region 框架生命周期
         /// <summary>确认单例归属并初始化音频系统。</summary>
         void Awake()
         {
@@ -156,13 +163,17 @@ namespace LiteFW
             m_SourcePool?.Dispose();
             _instance = null;
         }
+        #endregion
 
+        #region 框架内部实现 / 依赖注入
         /// <summary>注入资源提供器。</summary>
         internal void SetAssetProvider(IAssetProvider provider)
         {
             m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
         }
+        #endregion
 
+        #region 业务入口 / 普通播放
         /// <summary>异步播放不受世界位置影响的 2D 声音。</summary>
         public UniTask<AudioHandle> Play2DAsync(
             string assetKey,
@@ -230,7 +241,9 @@ namespace LiteFW
 
             return false;
         }
+        #endregion
 
+        #region 业务入口 / 单实例播放
         /// <summary>按分组播放单实例声音；同组新播放替换旧播放。</summary>
         public async UniTask<AudioHandle> PlaySingleAsync(
             string groupKey,
@@ -312,7 +325,9 @@ namespace LiteFW
                 m_SourcePool.Release(source);
             return true;
         }
+        #endregion
 
+        #region 框架内部实现 / 单实例辅助
         /// <summary>释放分组当前播放。</summary>
         private void ReleaseSingle(SinglePlayback playback)
         {
@@ -321,7 +336,9 @@ namespace LiteFW
             if (source != null)
                 m_SourcePool.Release(source);
         }
+        #endregion
 
+        #region 业务入口 / 背景音乐
         /// <summary>播放指定背景音乐。</summary>
         public void PlayBGM(AudioClip clip)
         {
@@ -356,7 +373,9 @@ namespace LiteFW
             m_BgmSource.clip = null;
             ReleaseBgmHandle();
         }
+        #endregion
 
+        #region 框架内部实现 / 初始化与播放回收
         /// <summary>创建播放器池与 BGM 播放器。</summary>
         private void Init()
         {
@@ -517,5 +536,6 @@ namespace LiteFW
             if (source != null)
                 Destroy(source.gameObject);
         }
+        #endregion
     }
 }

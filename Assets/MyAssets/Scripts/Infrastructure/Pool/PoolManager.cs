@@ -7,49 +7,7 @@ namespace LiteFW
     /// <summary>按预制体统一创建、复用和释放对象池。</summary>
     public sealed class PoolManager : IDisposable
     {
-        #region 框架内部实现 / 池记录与状态
-        /// <summary>池实例与创建参数的记录。</summary>
-        private sealed class PoolEntry : IDisposable
-        {
-            /// <summary>创建池记录。</summary>
-            internal PoolEntry(Component prefab, int initialCapacity, int minCachedCount, IDisposable pool)
-            {
-                Prefab = prefab;
-                InitialCapacity = initialCapacity;
-                MinCachedCount = minCachedCount;
-                Pool = pool;
-            }
-
-            /// <summary>池对应的预制体。</summary>
-            internal Component Prefab { get; }
-
-            /// <summary>预热数量。</summary>
-            internal int InitialCapacity { get; }
-
-            /// <summary>最少保留的空闲数量。</summary>
-            internal int MinCachedCount { get; }
-
-            /// <summary>池实例。</summary>
-            internal IDisposable Pool { get; }
-
-            /// <summary>销毁池及其实例。</summary>
-            public void Dispose()
-            {
-                Pool.Dispose();
-            }
-        }
-
-        /// <summary>预制体到池的映射。</summary>
-        private readonly Dictionary<Component, PoolEntry> m_Pools = new Dictionary<Component, PoolEntry>();
-
-        /// <summary>池根节点。</summary>
-        private readonly Transform m_Root;
-
-        /// <summary>是否已释放。</summary>
-        private bool m_IsDisposed;
-        #endregion
-
-        #region 业务入口 / 池管理
+        #region 业务入口
         /// <summary>创建对象池管理器。</summary>
         public PoolManager(Transform root)
         {
@@ -96,7 +54,9 @@ namespace LiteFW
             entry.Dispose();
             return true;
         }
+        #endregion
 
+        #region 框架生命周期
         /// <summary>销毁全部对象池。</summary>
         public void Dispose()
         {
@@ -108,6 +68,48 @@ namespace LiteFW
                 entry.Dispose();
             m_Pools.Clear();
         }
+        #endregion
+
+        #region 框架内部实现
+        /// <summary>池实例与创建参数的记录。</summary>
+        private sealed class PoolEntry : IDisposable
+        {
+            /// <summary>创建池记录。</summary>
+            internal PoolEntry(Component prefab, int initialCapacity, int minCachedCount, IDisposable pool)
+            {
+                Prefab = prefab;
+                InitialCapacity = initialCapacity;
+                MinCachedCount = minCachedCount;
+                Pool = pool;
+            }
+
+            /// <summary>池对应的预制体。</summary>
+            internal Component Prefab { get; }
+
+            /// <summary>预热数量。</summary>
+            internal int InitialCapacity { get; }
+
+            /// <summary>最少保留的空闲数量。</summary>
+            internal int MinCachedCount { get; }
+
+            /// <summary>池实例。</summary>
+            internal IDisposable Pool { get; }
+
+            /// <summary>销毁池及其实例。</summary>
+            public void Dispose()
+            {
+                Pool.Dispose();
+            }
+        }
+
+        /// <summary>预制体到池的映射。</summary>
+        private readonly Dictionary<Component, PoolEntry> m_Pools = new Dictionary<Component, PoolEntry>();
+
+        /// <summary>池根节点。</summary>
+        private readonly Transform m_Root;
+
+        /// <summary>是否已释放。</summary>
+        private bool m_IsDisposed;
         #endregion
     }
 }

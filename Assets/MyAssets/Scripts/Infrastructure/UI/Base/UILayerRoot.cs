@@ -6,14 +6,7 @@ namespace LiteFW
     /// <summary>单个 UI 层的 Canvas 根节点。</summary>
     public sealed class UILayerRoot : MonoBehaviour
     {
-        #region 框架内部实现 / 层状态
-        /// <summary>层 Canvas 组件。</summary>
-        private Canvas m_Canvas;
-        /// <summary>层分辨率适配组件。</summary>
-        private CanvasScaler m_CanvasScaler;
-        #endregion
-
-        #region 业务入口 / 层访问
+        #region 业务入口
         /// <summary>所属大层。</summary>
         public PanelLayer Layer { get; private set; }
 
@@ -21,7 +14,12 @@ namespace LiteFW
         public RectTransform Root => (RectTransform)transform;
         #endregion
 
-        #region 框架内部实现 / Canvas 初始化
+        #region 框架内部实现
+        /// <summary>层 Canvas 组件。</summary>
+        private Canvas m_Canvas;
+        /// <summary>层分辨率适配组件。</summary>
+        private CanvasScaler m_CanvasScaler;
+
         /// <summary>初始化层 Canvas、射线与缩放组件。</summary>
         internal void Initialize(PanelLayer layer)
         {

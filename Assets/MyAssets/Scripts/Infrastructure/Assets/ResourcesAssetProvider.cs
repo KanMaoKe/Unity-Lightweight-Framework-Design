@@ -8,7 +8,7 @@ namespace LiteFW
     /// <summary>基于 Resources 的资源提供器。</summary>
     public sealed class ResourcesAssetProvider : IAssetProvider
     {
-        #region 业务入口 / 资源加载
+        #region 业务入口
         /// <summary>从 Resources 异步加载资源；失败时抛出异常。</summary>
         public async UniTask<IAssetHandle<T>> LoadAsync<T>(
             string key,
@@ -32,7 +32,7 @@ namespace LiteFW
     /// <summary>Resources 资源句柄，仅维护框架内有效性。</summary>
     internal sealed class ResourcesAssetHandle<T> : IAssetHandle<T> where T : UnityEngine.Object
     {
-        #region 框架内部实现 / 句柄状态
+        #region 框架内部实现
         /// <summary>已加载的资源实例。</summary>
         private readonly T m_Asset;
         /// <summary>框架内是否仍持有该资源。</summary>
@@ -43,9 +43,7 @@ namespace LiteFW
         {
             m_Asset = asset;
         }
-        #endregion
 
-        #region 业务入口 / 资源访问与释放
         /// <summary>已加载的资源。</summary>
         public T Asset => m_Asset;
 

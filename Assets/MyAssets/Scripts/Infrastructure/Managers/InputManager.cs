@@ -5,7 +5,7 @@ namespace LiteFW
     /// <summary>输入服务占位：当前仅维护主相机引用。</summary>
     public class InputManager : MonoBehaviour
     {
-        #region 框架内部实现 / 相机状态
+        #region 框架内部实现
         /// <summary>缓存的主相机。</summary>
         private Camera mainCamera;
         #endregion

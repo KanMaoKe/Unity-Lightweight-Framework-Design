@@ -8,7 +8,7 @@ namespace LiteFW
     [DefaultExecutionOrder(-1000)]
     public sealed class FrameworkBootstrap : MonoBehaviour
     {
-        #region 框架内部实现 / 启动状态
+        #region 框架内部实现
         /// <summary>场景中活动的启动器实例。</summary>
         private static FrameworkBootstrap s_Instance;
 
@@ -34,78 +34,7 @@ namespace LiteFW
         private bool m_Initialized;
         /// <summary>是否正在初始化。</summary>
         private bool m_Initializing;
-        #endregion
 
-        #region 业务入口 / 服务访问
-        /// <summary>当前活动的启动器。</summary>
-        public static FrameworkBootstrap Instance => s_Instance;
-
-        /// <summary>框架服务是否已初始化完成。</summary>
-        public bool IsReady => m_Initialized;
-
-        /// <summary>音频服务。</summary>
-        public AudioManager Audio => m_AudioManager;
-
-        /// <summary>黑板容器。</summary>
-        public BlackboardManager Blackboards => m_BlackboardManager;
-
-        /// <summary>对象池管理器。</summary>
-        public PoolManager Pools => m_PoolManager;
-
-        /// <summary>标签服务。</summary>
-        public IGameplayTagManager Tags => m_GameplayTags;
-
-        /// <summary>输入管理器。</summary>
-        public InputManager Input => m_InputManager;
-
-        /// <summary>场景导航服务。</summary>
-        public ISceneNavigator Scenes => m_SceneNavigator;
-
-        /// <summary>UI 面板管理器。</summary>
-        public UIManager UI => m_UIManager;
-
-        /// <summary>资源提供器。</summary>
-        public IAssetProvider Assets => m_Assets;
-        #endregion
-
-        #region 框架生命周期
-        /// <summary>建立单例并启动框架初始化。</summary>
-        private async void Awake()
-        {
-            if (s_Instance != null && s_Instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            s_Instance = this;
-            DontDestroyOnLoad(gameObject);
-            await InitializeAsync();
-        }
-
-        /// <summary>启动器销毁时释放全部服务。</summary>
-        void OnDestroy()
-        {
-            if (s_Instance != this)
-                return;
-
-            Shutdown();
-            s_Instance = null;
-        }
-        #endregion
-
-        #region 业务入口 / 启动配置
-        /// <summary>替换资源提供器；须在启动器初始化前设置。</summary>
-        public void SetAssetProvider(IAssetProvider provider)
-        {
-            if (m_Initializing || m_Initialized)
-                throw new InvalidOperationException("启动器已初始化，不能替换资源提供器。");
-
-            m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
-        }
-        #endregion
-
-        #region 框架内部实现 / 初始化与释放
         /// <summary>按顺序创建并接线各框架服务。</summary>
         private async UniTask InitializeAsync()
         {
@@ -216,6 +145,73 @@ namespace LiteFW
             m_Assets = null;
             m_Initialized = false;
             m_Initializing = false;
+        }
+        #endregion
+
+        #region 业务入口
+        /// <summary>当前活动的启动器。</summary>
+        public static FrameworkBootstrap Instance => s_Instance;
+
+        /// <summary>框架服务是否已初始化完成。</summary>
+        public bool IsReady => m_Initialized;
+
+        /// <summary>音频服务。</summary>
+        public AudioManager Audio => m_AudioManager;
+
+        /// <summary>黑板容器。</summary>
+        public BlackboardManager Blackboards => m_BlackboardManager;
+
+        /// <summary>对象池管理器。</summary>
+        public PoolManager Pools => m_PoolManager;
+
+        /// <summary>标签服务。</summary>
+        public IGameplayTagManager Tags => m_GameplayTags;
+
+        /// <summary>输入管理器。</summary>
+        public InputManager Input => m_InputManager;
+
+        /// <summary>场景导航服务。</summary>
+        public ISceneNavigator Scenes => m_SceneNavigator;
+
+        /// <summary>UI 面板管理器。</summary>
+        public UIManager UI => m_UIManager;
+
+        /// <summary>资源提供器。</summary>
+        public IAssetProvider Assets => m_Assets;
+
+        /// <summary>替换资源提供器；须在启动器初始化前设置。</summary>
+        public void SetAssetProvider(IAssetProvider provider)
+        {
+            if (m_Initializing || m_Initialized)
+                throw new InvalidOperationException("启动器已初始化，不能替换资源提供器。");
+
+            m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
+        }
+        #endregion
+
+        #region 框架生命周期
+        /// <summary>建立单例并启动框架初始化。</summary>
+        private async void Awake()
+        {
+            if (s_Instance != null && s_Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            s_Instance = this;
+            DontDestroyOnLoad(gameObject);
+            await InitializeAsync();
+        }
+
+        /// <summary>启动器销毁时释放全部服务。</summary>
+        void OnDestroy()
+        {
+            if (s_Instance != this)
+                return;
+
+            Shutdown();
+            s_Instance = null;
         }
         #endregion
     }

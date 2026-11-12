@@ -9,10 +9,7 @@ namespace LiteFW
     /// <summary>管理面板配置、加载、缓存与生命周期。</summary>
     public class UIManager : IDisposable
     {
-        #region 框架内部实现 / 状态与缓存
-        /// <summary>全局单例实例。</summary>
-        private static UIManager _instance;
-
+        #region 业务入口
         /// <summary>全局单例。</summary>
         public static UIManager Instance
         {
@@ -24,63 +21,6 @@ namespace LiteFW
             }
         }
 
-        /// <summary>面板配置表。</summary>
-        private readonly Dictionary<string, PanelConfig> m_Configs = new Dictionary<string, PanelConfig>();
-        /// <summary>已打开面板表。</summary>
-        private readonly Dictionary<string, BasePanel> m_OpenPanels = new Dictionary<string, BasePanel>();
-        /// <summary>已缓存的面板实例。</summary>
-        private readonly Dictionary<string, BasePanel> m_CachedPanels = new Dictionary<string, BasePanel>();
-        /// <summary>预制体与资源句柄缓存。</summary>
-        private readonly Dictionary<string, PrefabEntry> m_PrefabCache = new Dictionary<string, PrefabEntry>();
-        /// <summary>进行中的加载任务。</summary>
-        private readonly Dictionary<string, UniTask<BasePanel>> m_LoadingRequests = new Dictionary<string, UniTask<BasePanel>>();
-        /// <summary>层到根节点的映射。</summary>
-        private readonly Dictionary<PanelLayer, UILayerRoot> m_Layers = new Dictionary<PanelLayer, UILayerRoot>();
-
-        /// <summary>当前资源提供器。</summary>
-        private IAssetProvider m_Assets;
-        /// <summary>UI 根节点。</summary>
-        private Transform m_Root;
-        /// <summary>驱动打开面板 Update 的组件。</summary>
-        private UIUpdateDriver m_UpdateDriver;
-        /// <summary>是否已释放。</summary>
-        private bool m_IsDisposed;
-
-        /// <summary>预制体缓存项。</summary>
-        private sealed class PrefabEntry
-        {
-            /// <summary>创建预制体缓存项。</summary>
-            internal PrefabEntry(GameObject prefab, IAssetHandle<GameObject> handle)
-            {
-                Prefab = prefab;
-                Handle = handle;
-            }
-
-            /// <summary>缓存的预制体。</summary>
-            internal GameObject Prefab { get; }
-
-            /// <summary>预制体资源句柄。</summary>
-            internal IAssetHandle<GameObject> Handle { get; }
-        }
-        #endregion
-
-        #region 框架内部实现 / 运行时接入
-        /// <summary>设置 UI 根节点并创建三层 Canvas。</summary>
-        internal void SetRoot(Transform root)
-        {
-            m_Root = root ?? throw new ArgumentNullException(nameof(root));
-            EnsureLayers();
-        }
-
-        /// <summary>替换资源提供器并释放旧预制体缓存。</summary>
-        internal void SetAssetProvider(IAssetProvider provider)
-        {
-            ReleasePrefabs();
-            m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
-        }
-        #endregion
-
-        #region 业务入口 / 面板注册与查询
         /// <summary>注册面板配置。</summary>
         public void RegisterPanel(PanelConfig config)
         {
@@ -107,35 +47,7 @@ namespace LiteFW
             foreach (PanelConfig config in configs)
                 RegisterPanel(config);
         }
-        #endregion
 
-        #region 框架内部实现 / 注册表加载
-        /// <summary>从资源提供器加载并注册面板配置。</summary>
-        internal async UniTask LoadRegistryAsync(CancellationToken cancellationToken = default)
-        {
-            if (m_Assets == null)
-                throw new InvalidOperationException("UI 资源提供器尚未注入。");
-
-            IAssetHandle<UIPanelRegistry> handle = null;
-            try
-            {
-                handle = await m_Assets.LoadAsync<UIPanelRegistry>("UI/UIPanelRegistry", cancellationToken);
-                if (handle.IsValid)
-                    RegisterPanels(handle.Asset.Panels);
-            }
-            catch (AssetNotFoundException)
-            {
-                return;
-            }
-            finally
-            {
-                if (handle != null)
-                    handle.Dispose();
-            }
-        }
-        #endregion
-
-        #region 业务入口 / 面板查询
         /// <summary>读取面板配置。</summary>
         public bool TryGetConfig(string name, out PanelConfig config)
         {
@@ -156,9 +68,7 @@ namespace LiteFW
 
         /// <summary>获取已注册面板配置。</summary>
         public IReadOnlyCollection<PanelConfig> Configs => m_Configs.Values;
-        #endregion
 
-        #region 业务入口 / 面板操作与释放
         /// <summary>异步打开面板。</summary>
         public async UniTask<BasePanel> OpenPanelAsync(string name, CancellationToken cancellationToken = default)
         {
@@ -229,7 +139,9 @@ namespace LiteFW
             RefreshCoverage();
             return true;
         }
+        #endregion
 
+        #region 框架生命周期
         /// <summary>释放全部面板、配置与资源缓存。</summary>
         public void Dispose()
         {
@@ -254,7 +166,87 @@ namespace LiteFW
         }
         #endregion
 
-        #region 框架内部实现 / 加载、层级与清理
+        #region 框架内部实现
+        /// <summary>全局单例实例。</summary>
+        private static UIManager _instance;
+
+        /// <summary>面板配置表。</summary>
+        private readonly Dictionary<string, PanelConfig> m_Configs = new Dictionary<string, PanelConfig>();
+        /// <summary>已打开面板表。</summary>
+        private readonly Dictionary<string, BasePanel> m_OpenPanels = new Dictionary<string, BasePanel>();
+        /// <summary>已缓存的面板实例。</summary>
+        private readonly Dictionary<string, BasePanel> m_CachedPanels = new Dictionary<string, BasePanel>();
+        /// <summary>预制体与资源句柄缓存。</summary>
+        private readonly Dictionary<string, PrefabEntry> m_PrefabCache = new Dictionary<string, PrefabEntry>();
+        /// <summary>进行中的加载任务。</summary>
+        private readonly Dictionary<string, UniTask<BasePanel>> m_LoadingRequests = new Dictionary<string, UniTask<BasePanel>>();
+        /// <summary>层到根节点的映射。</summary>
+        private readonly Dictionary<PanelLayer, UILayerRoot> m_Layers = new Dictionary<PanelLayer, UILayerRoot>();
+
+        /// <summary>当前资源提供器。</summary>
+        private IAssetProvider m_Assets;
+        /// <summary>UI 根节点。</summary>
+        private Transform m_Root;
+        /// <summary>驱动打开面板 Update 的组件。</summary>
+        private UIUpdateDriver m_UpdateDriver;
+        /// <summary>是否已释放。</summary>
+        private bool m_IsDisposed;
+
+        /// <summary>预制体缓存项。</summary>
+        private sealed class PrefabEntry
+        {
+            /// <summary>创建预制体缓存项。</summary>
+            internal PrefabEntry(GameObject prefab, IAssetHandle<GameObject> handle)
+            {
+                Prefab = prefab;
+                Handle = handle;
+            }
+
+            /// <summary>缓存的预制体。</summary>
+            internal GameObject Prefab { get; }
+
+            /// <summary>预制体资源句柄。</summary>
+            internal IAssetHandle<GameObject> Handle { get; }
+        }
+
+        /// <summary>设置 UI 根节点并创建三层 Canvas。</summary>
+        internal void SetRoot(Transform root)
+        {
+            m_Root = root ?? throw new ArgumentNullException(nameof(root));
+            EnsureLayers();
+        }
+
+        /// <summary>替换资源提供器并释放旧预制体缓存。</summary>
+        internal void SetAssetProvider(IAssetProvider provider)
+        {
+            ReleasePrefabs();
+            m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
+        }
+
+        /// <summary>从资源提供器加载并注册面板配置。</summary>
+        internal async UniTask LoadRegistryAsync(CancellationToken cancellationToken = default)
+        {
+            if (m_Assets == null)
+                throw new InvalidOperationException("UI 资源提供器尚未注入。");
+
+            IAssetHandle<UIPanelRegistry> handle = null;
+            try
+            {
+                handle = await m_Assets.LoadAsync<UIPanelRegistry>("UI/UIPanelRegistry", cancellationToken);
+                if (handle.IsValid)
+                    RegisterPanels(handle.Asset.Panels);
+            }
+            catch (AssetNotFoundException)
+            {
+                return;
+            }
+            finally
+            {
+                if (handle != null)
+                    handle.Dispose();
+            }
+        }
+
         /// <summary>加载预制体、创建实例并打开面板。</summary>
         private async UniTask<BasePanel> LoadAndOpenAsync(PanelConfig config, CancellationToken cancellationToken)
         {

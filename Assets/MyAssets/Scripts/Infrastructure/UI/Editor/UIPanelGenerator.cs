@@ -11,15 +11,6 @@ namespace LiteFW.Editor
     /// <summary>根据选中的 UI 预制体生成面板脚本和注册信息。</summary>
     public static class UIPanelGenerator
     {
-        #region 生成与扫描实现 / 输出配置
-        /// <summary>Core 脚本输出目录。</summary>
-        private const string CoreOutputDir = "Assets/MyAssets/Scripts/UI/Core/";
-        /// <summary>Logic 脚本输出目录。</summary>
-        private const string LogicOutputDir = "Assets/MyAssets/Scripts/UI/Logic/";
-        /// <summary>生成脚本使用的命名空间。</summary>
-        private const string Namespace = "LiteFW";
-        #endregion
-
         #region 编辑器使用入口
         /// <summary>校验选中对象并打开生成窗口。</summary>
         [MenuItem("生成我们的自定义脚本/UI/生成 UI 脚本")]
@@ -43,7 +34,14 @@ namespace LiteFW.Editor
         }
         #endregion
 
-        #region 生成与扫描实现 / 注册与脚本生成
+        #region 生成与扫描实现
+        /// <summary>Core 脚本输出目录。</summary>
+        private const string CoreOutputDir = "Assets/MyAssets/Scripts/UI/Core/";
+        /// <summary>Logic 脚本输出目录。</summary>
+        private const string LogicOutputDir = "Assets/MyAssets/Scripts/UI/Logic/";
+        /// <summary>生成脚本使用的命名空间。</summary>
+        private const string Namespace = "LiteFW";
+
         /// <summary>生成面板脚本并写入注册信息。</summary>
         internal static void GenerateFiles(string prefabPath, PanelLayer layer, int order)
         {
@@ -223,7 +221,7 @@ namespace LiteFW.Editor
             sb.AppendLine("    /// </summary>");
             sb.AppendLine($"    public partial class {className} : BasePanel");
             sb.AppendLine("    {");
-            sb.AppendLine("        #region 框架内部实现 / 自动绑定控件");
+            sb.AppendLine("        #region 框架内部实现");
             sb.AppendLine();
             sb.AppendLine("        // ===== UI 控件变量（工具自动扫描预制体生成）=====");
             if (controls.Count == 0)
@@ -260,7 +258,7 @@ namespace LiteFW.Editor
             sb.AppendLine("    /// </summary>");
             sb.AppendLine($"    public partial class {className}");
             sb.AppendLine("    {");
-            sb.AppendLine("        #region 业务入口 / 生命周期钩子");
+            sb.AppendLine("        #region 业务入口");
             sb.AppendLine();
             sb.AppendLine("        /// <summary>");
             sb.AppendLine("        /// 界面初始化（仅首次创建时调用一次）");
@@ -290,18 +288,12 @@ namespace LiteFW.Editor
             sb.AppendLine("        }");
             sb.AppendLine();
             sb.AppendLine("        #endregion");
-            sb.AppendLine();
-            sb.AppendLine("        #region 业务入口 / 自定义逻辑");
-            sb.AppendLine();
-            sb.AppendLine("        #endregion");
             sb.AppendLine("    }");
             sb.AppendLine("}");
 
             File.WriteAllText(filePath, sb.ToString(), Encoding.UTF8);
         }
-        #endregion
 
-        #region 生成与扫描实现 / 路径与标识符辅助
         /// <summary>把任意字符串转为合法标识符。</summary>
         private static string SanitizeIdentifier(string value)
         {
@@ -328,14 +320,12 @@ namespace LiteFW.Editor
     /// <summary>扫描到的一个控件及其生成信息。</summary>
     public sealed class ScannedControl
     {
-        #region 生成与扫描实现 / 控件数据
         /// <summary>控件节点名。</summary>
         public string Name;
         /// <summary>生成的字段名。</summary>
         public string FieldName;
         /// <summary>控件组件信息。</summary>
         public UIComponentInfo Info;
-        #endregion
     }
 }
 #endif

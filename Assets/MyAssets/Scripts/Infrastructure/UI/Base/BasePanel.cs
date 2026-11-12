@@ -5,10 +5,7 @@ namespace LiteFW
     /// <summary>面板基类，定义状态、配置与生命周期。</summary>
     public class BasePanel : MonoBehaviour
     {
-        #region 框架内部实现 / 面板状态
-        /// <summary>面板名称。</summary>
-        protected string panelName;
-
+        #region 业务入口
         /// <summary>注册的面板名。</summary>
         public string PanelId => panelName;
 
@@ -26,9 +23,66 @@ namespace LiteFW
 
         /// <summary>面板是否被 Popup 覆盖。</summary>
         public bool IsCovered { get; private set; }
+
+        /// <summary>首次创建回调。</summary>
+        protected virtual void OnInit(object userData)
+        {
+        }
+
+        /// <summary>每次打开回调。</summary>
+        protected virtual void OnOpen(object userData)
+        {
+        }
+
+        /// <summary>每次关闭回调。</summary>
+        protected virtual void OnClose(bool isShutdown, object userData)
+        {
+        }
+
+        /// <summary>被 Popup 覆盖时调用。</summary>
+        protected virtual void OnCover()
+        {
+        }
+
+        /// <summary>Popup 关闭后重新显示时调用。</summary>
+        protected virtual void OnReveal()
+        {
+        }
+
+        /// <summary>被 Popup 覆盖时调用，不停止自身更新。</summary>
+        protected virtual void OnPause()
+        {
+        }
+
+        /// <summary>Popup 关闭后恢复时调用。</summary>
+        protected virtual void OnResume()
+        {
+        }
+
+        /// <summary>重新获得焦点时调用。</summary>
+        protected virtual void OnRefocus(object userData)
+        {
+        }
+
+        /// <summary>面板打开时每帧调用。</summary>
+        protected virtual void OnUpdate(float elapseSeconds, float realElapseSeconds)
+        {
+        }
         #endregion
 
-        #region 框架内部实现 / 生命周期流程
+        #region 框架生命周期
+        /// <summary>销毁前清理。</summary>
+        private void OnDestroy()
+        {
+            EventBus.ClearScope(this);
+            State = PanelState.Released;
+        }
+        #endregion
+
+        #region 框架内部实现
+        /// <summary>面板名称。</summary>
+        protected string panelName;
+
         /// <summary>初始化面板配置。</summary>
         internal void Configure(PanelConfig config)
         {
@@ -121,62 +175,6 @@ namespace LiteFW
             if (wasOpen || isShutdown)
                 OnClose(isShutdown, null);
             gameObject.SetActive(false);
-        }
-        #endregion
-
-        #region 业务入口 / 生命周期钩子
-        /// <summary>首次创建回调。</summary>
-        protected virtual void OnInit(object userData)
-        {
-        }
-
-        /// <summary>每次打开回调。</summary>
-        protected virtual void OnOpen(object userData)
-        {
-        }
-
-        /// <summary>每次关闭回调。</summary>
-        protected virtual void OnClose(bool isShutdown, object userData)
-        {
-        }
-
-        /// <summary>被 Popup 覆盖时调用。</summary>
-        protected virtual void OnCover()
-        {
-        }
-
-        /// <summary>Popup 关闭后重新显示时调用。</summary>
-        protected virtual void OnReveal()
-        {
-        }
-
-        /// <summary>被 Popup 覆盖时调用，不停止自身更新。</summary>
-        protected virtual void OnPause()
-        {
-        }
-
-        /// <summary>Popup 关闭后恢复时调用。</summary>
-        protected virtual void OnResume()
-        {
-        }
-
-        /// <summary>重新获得焦点时调用。</summary>
-        protected virtual void OnRefocus(object userData)
-        {
-        }
-
-        /// <summary>面板打开时每帧调用。</summary>
-        protected virtual void OnUpdate(float elapseSeconds, float realElapseSeconds)
-        {
-        }
-        #endregion
-
-        #region 框架内部实现 / 销毁清理与状态类型
-        /// <summary>销毁前清理。</summary>
-        private void OnDestroy()
-        {
-            EventBus.ClearScope(this);
-            State = PanelState.Released;
         }
 
         /// <summary>面板状态。</summary>

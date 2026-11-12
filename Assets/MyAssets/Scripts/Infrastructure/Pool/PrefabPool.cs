@@ -7,44 +7,7 @@ namespace LiteFW
     /// <summary>预制体组件对象池，按使用压力调整缓存数量。</summary>
     public sealed class PrefabPool<T> : IDisposable where T : Component
     {
-        #region 框架内部实现 / 状态与缓存
-        /// <summary>由活跃数量推算缓存需求的系数。</summary>
-        const float k_CachePressureFactor = 0.75f;
-        /// <summary>允许下调缓存前的等待时长。</summary>
-        const float k_CacheDecayDelay = 10f;
-        /// <summary>每次下调缓存的时间间隔。</summary>
-        const float k_CacheDecayInterval = 5f;
-
-        /// <summary>池化对象的模板。</summary>
-        readonly T m_Prefab;
-        /// <summary>实例的统一挂载节点。</summary>
-        readonly Transform m_PoolRoot;
-        /// <summary>实例名称。</summary>
-        readonly string m_InstanceName;
-        /// <summary>预热数量。</summary>
-        readonly int m_InitialCapacity;
-        /// <summary>最少保留的空闲数量。</summary>
-        readonly int m_MinCachedCount;
-        /// <summary>可借用的空闲实例。</summary>
-        readonly Stack<T> m_FreeItems;
-        /// <summary>池自行创建的实例。</summary>
-        readonly List<T> m_ClonedItems;
-        /// <summary>已借出的实例。</summary>
-        readonly HashSet<T> m_RentedItems;
-
-        /// <summary>是否已完成预热。</summary>
-        bool m_Prewarmed;
-        /// <summary>当前借出数量。</summary>
-        int m_ActiveCount;
-        /// <summary>目标空闲缓存数量。</summary>
-        int m_TargetCachedCount;
-        /// <summary>最近一次缓存压力上升时间。</summary>
-        float m_LastPressureTime;
-        /// <summary>最近一次下调缓存的时间。</summary>
-        float m_LastDecayTime;
-        #endregion
-
-        #region 业务入口 / 池操作
+        #region 业务入口
         /// <summary>创建预制体对象池。</summary>
         /// <param name="prefab">池化对象的模板 prefab。</param>
         /// <param name="poolRoot">空闲实例的挂载节点。</param>
@@ -137,7 +100,9 @@ namespace LiteFW
 
             m_FreeItems.Push(item);
         }
+        #endregion
 
+        #region 框架生命周期
         /// <summary>销毁池中全部实例并复位状态。</summary>
         public void Dispose()
         {
@@ -159,7 +124,42 @@ namespace LiteFW
         }
         #endregion
 
-        #region 框架内部实现 / 缓存与生命周期辅助
+        #region 框架内部实现
+        /// <summary>由活跃数量推算缓存需求的系数。</summary>
+        const float k_CachePressureFactor = 0.75f;
+        /// <summary>允许下调缓存前的等待时长。</summary>
+        const float k_CacheDecayDelay = 10f;
+        /// <summary>每次下调缓存的时间间隔。</summary>
+        const float k_CacheDecayInterval = 5f;
+
+        /// <summary>池化对象的模板。</summary>
+        readonly T m_Prefab;
+        /// <summary>实例的统一挂载节点。</summary>
+        readonly Transform m_PoolRoot;
+        /// <summary>实例名称。</summary>
+        readonly string m_InstanceName;
+        /// <summary>预热数量。</summary>
+        readonly int m_InitialCapacity;
+        /// <summary>最少保留的空闲数量。</summary>
+        readonly int m_MinCachedCount;
+        /// <summary>可借用的空闲实例。</summary>
+        readonly Stack<T> m_FreeItems;
+        /// <summary>池自行创建的实例。</summary>
+        readonly List<T> m_ClonedItems;
+        /// <summary>已借出的实例。</summary>
+        readonly HashSet<T> m_RentedItems;
+
+        /// <summary>是否已完成预热。</summary>
+        bool m_Prewarmed;
+        /// <summary>当前借出数量。</summary>
+        int m_ActiveCount;
+        /// <summary>目标空闲缓存数量。</summary>
+        int m_TargetCachedCount;
+        /// <summary>最近一次缓存压力上升时间。</summary>
+        float m_LastPressureTime;
+        /// <summary>最近一次下调缓存的时间。</summary>
+        float m_LastDecayTime;
+
         /// <summary>实例化一个新的池对象。</summary>
         T CreateClone()
         {

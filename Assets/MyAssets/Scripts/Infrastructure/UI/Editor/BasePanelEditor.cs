@@ -20,7 +20,7 @@ namespace LiteFW.Editor
         }
         #endregion
 
-        #region 生成与扫描实现 / 控件绑定
+        #region 生成与扫描实现
         /// <summary>将扫描到的控件引用写入面板字段。</summary>
         private void BindControls()
         {

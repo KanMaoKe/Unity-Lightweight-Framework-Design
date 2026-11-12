@@ -11,14 +11,7 @@ namespace LiteFW
     /// </summary>
     public static class EventBus
     {
-        #region 框架内部实现 / 全局事件状态
-        /// <summary>事件类型到通道的映射。</summary>
-        private static readonly Dictionary<Type, object> events = new Dictionary<Type, object>();
-        /// <summary>作用域键到通道的映射。</summary>
-        private static readonly Dictionary<ScopedEventKey, object> scopedEvents = new Dictionary<ScopedEventKey, object>();
-        #endregion
-
-        #region 业务入口 / 全局事件
+        #region 业务入口
         /// <summary>订阅事件。</summary>
         public static void Subscribe<T>(Action<T> handler) where T : struct, IEventMessage
         {
@@ -53,23 +46,6 @@ namespace LiteFW
             if (channel.IsEmpty)
                 events.Remove(key);
         }
-        #endregion
-
-        #region 框架内部实现 / 全局事件通道
-        /// <summary>获取或创建事件通道。</summary>
-        private static EventChannel<T> GetOrCreateChannel<T>() where T : struct, IEventMessage
-        {
-            Type key = typeof(T);
-            if (events.TryGetValue(key, out var obj))
-                return (EventChannel<T>)obj;
-
-            var channel = new EventChannel<T>();
-            events.Add(key, channel);
-            return channel;
-        }
-        #endregion
-
-        #region 业务入口 / 作用域事件
         /// <summary>订阅作用域事件；仅相同 scope 的发布触发。</summary>
         public static void Subscribe<T>(object scope, Action<T> handler) where T : struct, IEventMessage
         {
@@ -134,7 +110,24 @@ namespace LiteFW
         }
         #endregion
 
-        #region 框架内部实现 / 作用域通道与内部类型
+        #region 框架内部实现
+        /// <summary>事件类型到通道的映射。</summary>
+        private static readonly Dictionary<Type, object> events = new Dictionary<Type, object>();
+        /// <summary>作用域键到通道的映射。</summary>
+        private static readonly Dictionary<ScopedEventKey, object> scopedEvents = new Dictionary<ScopedEventKey, object>();
+
+        /// <summary>获取或创建事件通道。</summary>
+        private static EventChannel<T> GetOrCreateChannel<T>() where T : struct, IEventMessage
+        {
+            Type key = typeof(T);
+            if (events.TryGetValue(key, out var obj))
+                return (EventChannel<T>)obj;
+
+            var channel = new EventChannel<T>();
+            events.Add(key, channel);
+            return channel;
+        }
+
         /// <summary>获取或创建作用域事件通道。</summary>
         private static EventChannel<T> GetOrCreateScopedChannel<T>(object scope) where T : struct, IEventMessage
         {

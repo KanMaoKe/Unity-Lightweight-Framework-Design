@@ -11,12 +11,7 @@ namespace LiteFW
     /// <summary>音频服务：普通音效共用播放器池，BGM 独立，单实例按分组替换。</summary>
     public class AudioManager : MonoBehaviour
     {
-        #region 框架内部实现 / 单例状态
-        /// <summary>单例实例。</summary>
-        private static AudioManager _instance;
-        #endregion
-
-        #region 业务入口 / 单例
+        #region 业务入口
         /// <summary>全局单例；正式实例由启动器创建并注入资源提供器。</summary>
         public static AudioManager Instance
         {
@@ -30,9 +25,241 @@ namespace LiteFW
                 return _instance;
             }
         }
+
+        /// <summary>异步播放不受世界位置影响的 2D 声音。</summary>
+        public UniTask<AudioHandle> Play2DAsync(
+            string assetKey,
+            float volume = 1f,
+            float pitch = 1f,
+            CancellationToken cancellationToken = default)
+        {
+            return PlayAsync(assetKey, Vector3.zero, false, null, volume, pitch, cancellationToken);
+        }
+
+        /// <summary>异步在指定世界位置播放 3D 声音。</summary>
+        public UniTask<AudioHandle> PlayAtAsync(
+            string assetKey,
+            Vector3 position,
+            float volume = 1f,
+            float pitch = 1f,
+            CancellationToken cancellationToken = default)
+        {
+            return PlayAsync(assetKey, position, true, null, volume, pitch, cancellationToken);
+        }
+
+        /// <summary>异步播放跟随目标的声音；目标销毁后停止。</summary>
+        public UniTask<AudioHandle> PlayFollowAsync(
+            string assetKey,
+            Transform target,
+            float volume = 1f,
+            float pitch = 1f,
+            CancellationToken cancellationToken = default)
+        {
+            if (!target)
+                throw new ArgumentNullException(nameof(target));
+
+            return PlayAsync(assetKey, target.position, true, target, volume, pitch, cancellationToken);
+        }
+
+        /// <summary>以随机音高异步播放 2D 声音。</summary>
+        public UniTask<AudioHandle> Play2DRandomPitchAsync(
+            string assetKey,
+            float minPitch = 0.6f,
+            float maxPitch = 1.8f,
+            float volume = 1f,
+            CancellationToken cancellationToken = default)
+        {
+            return Play2DAsync(
+                assetKey,
+                volume,
+                UnityEngine.Random.Range(minPitch, maxPitch),
+                cancellationToken);
+        }
+
+        /// <summary>停止指定普通播放。</summary>
+        public bool Stop(AudioHandle handle)
+        {
+            if (!handle.IsValid)
+                return false;
+
+            for (int i = m_ActivePlaybacks.Count - 1; i >= 0; i--)
+            {
+                if (m_ActivePlaybacks[i].Id != handle.Id)
+                    continue;
+
+                ReleaseAt(i);
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>按分组播放单实例声音；同组新播放替换旧播放。</summary>
+        public async UniTask<AudioHandle> PlaySingleAsync(
+            string groupKey,
+            string assetKey,
+            float volume = 1f,
+            float pitch = 1f,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(groupKey))
+                throw new ArgumentException("单实例分组 Key 不能为空。", nameof(groupKey));
+            if (string.IsNullOrEmpty(assetKey))
+                throw new ArgumentException("音频资源 key 不能为空。", nameof(assetKey));
+
+            if (!m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback playback))
+            {
+                playback = new SinglePlayback();
+                m_SinglePlaybacks.Add(groupKey, playback);
+            }
+
+            int requestId = ++playback.RequestId;
+            ReleaseSingle(playback);
+
+            try
+            {
+                IAssetHandle<AudioClip> assetHandle =
+                    await m_Assets.LoadAsync<AudioClip>(assetKey, cancellationToken);
+                if (!m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback current) ||
+                    current.RequestId != requestId)
+                {
+                    assetHandle.Dispose();
+                    return default;
+                }
+
+                if (!assetHandle.IsValid)
+                {
+                    assetHandle.Dispose();
+                    m_SinglePlaybacks.Remove(groupKey);
+                    return default;
+                }
+
+                AudioSource source = m_SourcePool.Get();
+                source.clip = assetHandle.Asset;
+                source.outputAudioMixerGroup = sfxGroup;
+                source.loop = false;
+                source.volume = Mathf.Clamp01(volume);
+                source.pitch = pitch;
+                source.spatialBlend = 0f;
+                source.transform.position = Vector3.zero;
+
+                current.Source = source;
+                current.AssetHandle = assetHandle;
+                source.Play();
+                return new AudioHandle(m_NextPlaybackId++);
+            }
+            catch
+            {
+                if (m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback current) &&
+                    current.RequestId == requestId)
+                {
+                    m_SinglePlaybacks.Remove(groupKey);
+                }
+                throw;
+            }
+        }
+
+        /// <summary>停止指定分组，或取消其正在加载的请求。</summary>
+        public bool StopSingle(string groupKey)
+        {
+            if (string.IsNullOrWhiteSpace(groupKey) ||
+                !m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback playback))
+            {
+                return false;
+            }
+
+            AudioSource source = playback.Source;
+            playback.Release();
+            m_SinglePlaybacks.Remove(groupKey);
+            if (source != null)
+                m_SourcePool.Release(source);
+            return true;
+        }
+
+        /// <summary>播放指定背景音乐。</summary>
+        public void PlayBGM(AudioClip clip)
+        {
+            if (clip == null) return;
+            ReleaseBgmHandle();
+            m_BgmSource.clip = clip;
+            m_BgmSource.Play();
+        }
+
+        /// <summary>异步按资源 key 播放背景音乐。</summary>
+        public async UniTask<AudioHandle> PlayBGMAsync(
+            string assetKey,
+            float volume = 1f,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(assetKey))
+                throw new ArgumentException("音频资源 key 不能为空。", nameof(assetKey));
+
+            IAssetHandle<AudioClip> handle = await m_Assets.LoadAsync<AudioClip>(assetKey, cancellationToken);
+            ReleaseBgmHandle();
+            m_BgmHandle = handle;
+            m_BgmSource.clip = handle.Asset;
+            m_BgmSource.volume = Mathf.Clamp01(volume);
+            m_BgmSource.Play();
+            return new AudioHandle(m_NextPlaybackId++);
+        }
+
+        /// <summary>停止背景音乐。</summary>
+        public void StopBGM()
+        {
+            m_BgmSource.Stop();
+            m_BgmSource.clip = null;
+            ReleaseBgmHandle();
+        }
         #endregion
 
-        #region 框架内部实现 / 配置与运行时状态
+        #region 框架生命周期
+        /// <summary>确认单例归属并初始化音频系统。</summary>
+        void Awake()
+        {
+            if (_instance != null && _instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            _instance = this;
+            if (transform.parent == null)
+                DontDestroyOnLoad(gameObject);
+            Init();
+        }
+
+        /// <summary>每帧回收播放并更新跟随位置。</summary>
+        void Update()
+        {
+            Tick();
+        }
+
+        /// <summary>销毁时停止全部播放并释放资源。</summary>
+        void OnDestroy()
+        {
+            if (_instance != this)
+                return;
+
+            for (int i = m_ActivePlaybacks.Count - 1; i >= 0; i--)
+                ReleaseAt(i);
+
+            StopBGM();
+            foreach (SinglePlayback playback in m_SinglePlaybacks.Values)
+            {
+                AudioSource source = playback.Source;
+                playback.Release();
+                if (source != null)
+                    m_SourcePool.Release(source);
+            }
+            m_SinglePlaybacks.Clear();
+            m_SourcePool?.Dispose();
+            _instance = null;
+        }
+        #endregion
+
+        #region 框架内部实现
+        /// <summary>单例实例。</summary>
+        private static AudioManager _instance;
+
         /// <summary>初始化时预创建的播放器数量。</summary>
         [Header("播放器对象池")]
         [Tooltip("预热数量：初始化时预创建的空闲播放器数量")]
@@ -119,215 +346,13 @@ namespace LiteFW
             /// <summary>音频资源句柄。</summary>
             public IAssetHandle<AudioClip> AssetHandle { get; }
         }
-        #endregion
 
-        #region 框架生命周期
-        /// <summary>确认单例归属并初始化音频系统。</summary>
-        void Awake()
-        {
-            if (_instance != null && _instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
-            _instance = this;
-            if (transform.parent == null)
-                DontDestroyOnLoad(gameObject);
-            Init();
-        }
-
-        /// <summary>每帧回收播放并更新跟随位置。</summary>
-        void Update()
-        {
-            Tick();
-        }
-
-        /// <summary>销毁时停止全部播放并释放资源。</summary>
-        void OnDestroy()
-        {
-            if (_instance != this)
-                return;
-
-            for (int i = m_ActivePlaybacks.Count - 1; i >= 0; i--)
-                ReleaseAt(i);
-
-            StopBGM();
-            foreach (SinglePlayback playback in m_SinglePlaybacks.Values)
-            {
-                AudioSource source = playback.Source;
-                playback.Release();
-                if (source != null)
-                    m_SourcePool.Release(source);
-            }
-            m_SinglePlaybacks.Clear();
-            m_SourcePool?.Dispose();
-            _instance = null;
-        }
-        #endregion
-
-        #region 框架内部实现 / 依赖注入
         /// <summary>注入资源提供器。</summary>
         internal void SetAssetProvider(IAssetProvider provider)
         {
             m_Assets = provider ?? throw new ArgumentNullException(nameof(provider));
         }
-        #endregion
 
-        #region 业务入口 / 普通播放
-        /// <summary>异步播放不受世界位置影响的 2D 声音。</summary>
-        public UniTask<AudioHandle> Play2DAsync(
-            string assetKey,
-            float volume = 1f,
-            float pitch = 1f,
-            CancellationToken cancellationToken = default)
-        {
-            return PlayAsync(assetKey, Vector3.zero, false, null, volume, pitch, cancellationToken);
-        }
-
-        /// <summary>异步在指定世界位置播放 3D 声音。</summary>
-        public UniTask<AudioHandle> PlayAtAsync(
-            string assetKey,
-            Vector3 position,
-            float volume = 1f,
-            float pitch = 1f,
-            CancellationToken cancellationToken = default)
-        {
-            return PlayAsync(assetKey, position, true, null, volume, pitch, cancellationToken);
-        }
-
-        /// <summary>异步播放跟随目标的声音；目标销毁后停止。</summary>
-        public UniTask<AudioHandle> PlayFollowAsync(
-            string assetKey,
-            Transform target,
-            float volume = 1f,
-            float pitch = 1f,
-            CancellationToken cancellationToken = default)
-        {
-            if (!target)
-                throw new ArgumentNullException(nameof(target));
-
-            return PlayAsync(assetKey, target.position, true, target, volume, pitch, cancellationToken);
-        }
-
-        /// <summary>以随机音高异步播放 2D 声音。</summary>
-        public UniTask<AudioHandle> Play2DRandomPitchAsync(
-            string assetKey,
-            float minPitch = 0.6f,
-            float maxPitch = 1.8f,
-            float volume = 1f,
-            CancellationToken cancellationToken = default)
-        {
-            return Play2DAsync(
-                assetKey,
-                volume,
-                UnityEngine.Random.Range(minPitch, maxPitch),
-                cancellationToken);
-        }
-
-        /// <summary>停止指定普通播放。</summary>
-        public bool Stop(AudioHandle handle)
-        {
-            if (!handle.IsValid)
-                return false;
-
-            for (int i = m_ActivePlaybacks.Count - 1; i >= 0; i--)
-            {
-                if (m_ActivePlaybacks[i].Id != handle.Id)
-                    continue;
-
-                ReleaseAt(i);
-                return true;
-            }
-
-            return false;
-        }
-        #endregion
-
-        #region 业务入口 / 单实例播放
-        /// <summary>按分组播放单实例声音；同组新播放替换旧播放。</summary>
-        public async UniTask<AudioHandle> PlaySingleAsync(
-            string groupKey,
-            string assetKey,
-            float volume = 1f,
-            float pitch = 1f,
-            CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrWhiteSpace(groupKey))
-                throw new ArgumentException("单实例分组 Key 不能为空。", nameof(groupKey));
-            if (string.IsNullOrEmpty(assetKey))
-                throw new ArgumentException("音频资源 key 不能为空。", nameof(assetKey));
-
-            if (!m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback playback))
-            {
-                playback = new SinglePlayback();
-                m_SinglePlaybacks.Add(groupKey, playback);
-            }
-
-            int requestId = ++playback.RequestId;
-            ReleaseSingle(playback);
-
-            try
-            {
-                IAssetHandle<AudioClip> assetHandle =
-                    await m_Assets.LoadAsync<AudioClip>(assetKey, cancellationToken);
-                if (!m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback current) ||
-                    current.RequestId != requestId)
-                {
-                    assetHandle.Dispose();
-                    return default;
-                }
-
-                if (!assetHandle.IsValid)
-                {
-                    assetHandle.Dispose();
-                    m_SinglePlaybacks.Remove(groupKey);
-                    return default;
-                }
-
-                AudioSource source = m_SourcePool.Get();
-                source.clip = assetHandle.Asset;
-                source.outputAudioMixerGroup = sfxGroup;
-                source.loop = false;
-                source.volume = Mathf.Clamp01(volume);
-                source.pitch = pitch;
-                source.spatialBlend = 0f;
-                source.transform.position = Vector3.zero;
-
-                current.Source = source;
-                current.AssetHandle = assetHandle;
-                source.Play();
-                return new AudioHandle(m_NextPlaybackId++);
-            }
-            catch
-            {
-                if (m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback current) &&
-                    current.RequestId == requestId)
-                {
-                    m_SinglePlaybacks.Remove(groupKey);
-                }
-                throw;
-            }
-        }
-
-        /// <summary>停止指定分组，或取消其正在加载的请求。</summary>
-        public bool StopSingle(string groupKey)
-        {
-            if (string.IsNullOrWhiteSpace(groupKey) ||
-                !m_SinglePlaybacks.TryGetValue(groupKey, out SinglePlayback playback))
-            {
-                return false;
-            }
-
-            AudioSource source = playback.Source;
-            playback.Release();
-            m_SinglePlaybacks.Remove(groupKey);
-            if (source != null)
-                m_SourcePool.Release(source);
-            return true;
-        }
-        #endregion
-
-        #region 框架内部实现 / 单实例辅助
         /// <summary>释放分组当前播放。</summary>
         private void ReleaseSingle(SinglePlayback playback)
         {
@@ -336,46 +361,7 @@ namespace LiteFW
             if (source != null)
                 m_SourcePool.Release(source);
         }
-        #endregion
 
-        #region 业务入口 / 背景音乐
-        /// <summary>播放指定背景音乐。</summary>
-        public void PlayBGM(AudioClip clip)
-        {
-            if (clip == null) return;
-            ReleaseBgmHandle();
-            m_BgmSource.clip = clip;
-            m_BgmSource.Play();
-        }
-
-        /// <summary>异步按资源 key 播放背景音乐。</summary>
-        public async UniTask<AudioHandle> PlayBGMAsync(
-            string assetKey,
-            float volume = 1f,
-            CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrEmpty(assetKey))
-                throw new ArgumentException("音频资源 key 不能为空。", nameof(assetKey));
-
-            IAssetHandle<AudioClip> handle = await m_Assets.LoadAsync<AudioClip>(assetKey, cancellationToken);
-            ReleaseBgmHandle();
-            m_BgmHandle = handle;
-            m_BgmSource.clip = handle.Asset;
-            m_BgmSource.volume = Mathf.Clamp01(volume);
-            m_BgmSource.Play();
-            return new AudioHandle(m_NextPlaybackId++);
-        }
-
-        /// <summary>停止背景音乐。</summary>
-        public void StopBGM()
-        {
-            m_BgmSource.Stop();
-            m_BgmSource.clip = null;
-            ReleaseBgmHandle();
-        }
-        #endregion
-
-        #region 框架内部实现 / 初始化与播放回收
         /// <summary>创建播放器池与 BGM 播放器。</summary>
         private void Init()
         {
